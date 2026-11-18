@@ -3,6 +3,7 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
+using NitroPC.Helpers;
 using NitroPC.Interop;
 using NitroPC.Models;
 using NitroPC.Services;
@@ -82,6 +83,12 @@ public sealed partial class TaskbarStripWindow : Window
         KeepAwakeBadge.Visibility = hidden ? Visibility.Collapsed : Visibility.Visible;
         KeepAwakeText.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
         KeepAwakeBadge.Padding = compact ? new Thickness(5, 3, 5, 3) : new Thickness(6, 3, 6, 3);
+        RamValuePanel.Width = settings.RamDisplayMode switch
+        {
+            RamDisplayMode.Both => 68,
+            RamDisplayMode.Gigabytes => 40,
+            _ => 36
+        };
 
         if (_latestMetrics is not null)
         {
@@ -179,18 +186,37 @@ public sealed partial class TaskbarStripWindow : Window
         var stripWidthPhysical = (int)Math.Ceiling(ActualWidth * dpi.DpiScaleX);
         var stripHeightPhysical = shellRect.Height;
         var marginPhysical = (int)Math.Round(6 * dpi.DpiScaleX);
-        var targetX = notifyRect.Left - stripWidthPhysical - marginPhysical;
         var targetY = shellRect.Top;
 
         var rebar = shellTray == IntPtr.Zero
             ? IntPtr.Zero
             : NativeMethods.FindWindowEx(shellTray, IntPtr.Zero, "ReBarWindow32", null);
+        NativeMethods.RECT? rebarRect = null;
         if (rebar != IntPtr.Zero &&
-            NativeMethods.GetWindowRect(rebar, out var rebarRect) &&
-            targetX < rebarRect.Right + marginPhysical)
+            NativeMethods.GetWindowRect(rebar, out var foundRebarRect))
         {
-            targetX = rebarRect.Right + marginPhysical;
+            rebarRect = foundRebarRect;
         }
+
+        var safeX = TaskbarLayout.FindRightAnchoredSlot(
+            shellRect,
+            notifyRect,
+            rebarRect,
+            CollectTaskbarObstacles(handle, shellTray, shellRect, notifyRect),
+            stripWidthPhysical,
+            marginPhysical);
+        if (safeX is null)
+        {
+            if (Visibility != Visibility.Hidden)
+            {
+                Visibility = Visibility.Hidden;
+                DockingHidden?.Invoke();
+            }
+
+            return;
+        }
+
+        var targetX = safeX.Value;
 
         Height = shellRect.Height / dpi.DpiScaleY;
         NativeMethods.SetWindowPos(
@@ -209,6 +235,54 @@ public sealed partial class TaskbarStripWindow : Window
             Right = targetX + stripWidthPhysical,
             Bottom = targetY + stripHeightPhysical
         };
+    }
+
+    private static IReadOnlyList<NativeMethods.RECT> CollectTaskbarObstacles(
+        IntPtr stripHandle,
+        IntPtr shellTray,
+        NativeMethods.RECT shellRect,
+        NativeMethods.RECT notifyRect)
+    {
+        var obstacles = new List<NativeMethods.RECT>();
+        if (shellTray != IntPtr.Zero)
+        {
+            NativeMethods.EnumChildWindows(shellTray, (handle, _) =>
+            {
+                AddTaskbarObstacle(handle, stripHandle, shellRect, notifyRect, obstacles);
+                return true;
+            }, IntPtr.Zero);
+        }
+
+        NativeMethods.EnumWindows((handle, _) =>
+        {
+            AddTaskbarObstacle(handle, stripHandle, shellRect, notifyRect, obstacles);
+            return true;
+        }, IntPtr.Zero);
+        return obstacles;
+    }
+
+    private static void AddTaskbarObstacle(
+        IntPtr handle,
+        IntPtr stripHandle,
+        NativeMethods.RECT shellRect,
+        NativeMethods.RECT notifyRect,
+        ICollection<NativeMethods.RECT> obstacles)
+    {
+        if (handle == stripHandle ||
+            !NativeMethods.IsWindowVisible(handle) ||
+            !NativeMethods.GetWindowRect(handle, out var rect) ||
+            rect.Left >= notifyRect.Left ||
+            rect.Right <= shellRect.Left ||
+            rect.Top < shellRect.Top - 4 ||
+            rect.Bottom > shellRect.Bottom + 4 ||
+            rect.Width >= shellRect.Width - 32 ||
+            rect.Width <= 0 ||
+            rect.Height <= 0)
+        {
+            return;
+        }
+
+        obstacles.Add(rect);
     }
 
     private static string FormatRamValue(MetricsSnapshot metrics, RamDisplayMode mode) => mode switch

@@ -36,8 +36,8 @@
                                           Height="18"
                                           MaxBars="14"
                                           BarBrush="{StaticResource CpuCoralBrush}"
-                                          VerticalAlignment="Center"/>
-                <StackPanel Margin="7,0,0,0" VerticalAlignment="Center">
+                                          VerticalAlignment="Bottom"/>
+                <StackPanel Margin="7,0,0,0" Width="36" VerticalAlignment="Bottom">
                     <TextBlock Text="CPU"
                                FontFamily="{StaticResource NitroFont}"
                                FontSize="9"
@@ -49,6 +49,7 @@
                                FontSize="13.5"
                                FontWeight="Bold"
                                Typography.NumeralAlignment="Tabular"
+                               TextAlignment="Right"
                                Foreground="{StaticResource TextPrimaryBrush}"/>
                 </StackPanel>
             </StackPanel>
@@ -64,8 +65,12 @@
                                                Height="20"
                                                StrokeBrush="{StaticResource RamBlueBrush}"
                                                FillBrush="{StaticResource RamFillBrush}"
-                                               GuideBrush="{StaticResource SparkGuideBrush}"/>
-                <StackPanel Margin="7,0,0,0" VerticalAlignment="Center">
+                                               GuideBrush="{StaticResource SparkGuideBrush}"
+                                               VerticalAlignment="Bottom"/>
+                <StackPanel x:Name="RamValuePanel"
+                            Margin="7,0,0,0"
+                            Width="36"
+                            VerticalAlignment="Bottom">
                     <TextBlock Text="RAM"
                                FontFamily="{StaticResource NitroFont}"
                                FontSize="9"
@@ -77,6 +82,7 @@
                                FontSize="13.5"
                                FontWeight="Bold"
                                Typography.NumeralAlignment="Tabular"
+                               TextAlignment="Right"
                                Foreground="{StaticResource TextPrimaryBrush}"/>
                 </StackPanel>
             </StackPanel>
@@ -103,7 +109,7 @@
                                   StrokeLineJoin="Round"/>
                         </Canvas>
                     </Viewbox>
-                    <StackPanel x:Name="KeepAwakeText" VerticalAlignment="Center">
+                    <StackPanel x:Name="KeepAwakeText" Width="46" VerticalAlignment="Bottom">
                         <TextBlock x:Name="KeepAwakeLabel"
                                    Text="IDLE"
                                    FontFamily="{StaticResource NitroFont}"
@@ -116,6 +122,7 @@
                                    FontSize="13"
                                    FontWeight="Bold"
                                    Typography.NumeralAlignment="Tabular"
+                                   TextAlignment="Left"
                                    Foreground="{StaticResource TextPrimaryBrush}"/>
                     </StackPanel>
                 </StackPanel>
