@@ -7,6 +7,12 @@ public enum RamDisplayMode
     Both
 }
 
+public enum CpuDisplayMode
+{
+    Cores,
+    History
+}
+
 public enum KeepAwakeBarMode
 {
     Badge,
@@ -20,6 +26,8 @@ public sealed class NitroSettings
     public int KeepAwakeMinutes { get; set; } = 60;
 
     public bool AutoStartKeepAwakeOnLaunch { get; set; }
+
+    public CpuDisplayMode CpuDisplayMode { get; set; } = CpuDisplayMode.Cores;
 
     public RamDisplayMode RamDisplayMode { get; set; } = RamDisplayMode.Percent;
 

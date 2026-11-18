@@ -30,6 +30,20 @@ public sealed class CpuBarsControl : FrameworkElement
             typeof(CpuBarsControl),
             new FrameworkPropertyMetadata(WpfBrushes.Coral, FrameworkPropertyMetadataOptions.AffectsRender));
 
+    public static readonly DependencyProperty LatestBarBrushProperty =
+        DependencyProperty.Register(
+            nameof(LatestBarBrush),
+            typeof(Brush),
+            typeof(CpuBarsControl),
+            new FrameworkPropertyMetadata(WpfBrushes.White, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    public static readonly DependencyProperty HighlightLatestBarProperty =
+        DependencyProperty.Register(
+            nameof(HighlightLatestBar),
+            typeof(bool),
+            typeof(CpuBarsControl),
+            new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
+
     public IReadOnlyList<double> Values
     {
         get => (IReadOnlyList<double>)GetValue(ValuesProperty);
@@ -48,6 +62,18 @@ public sealed class CpuBarsControl : FrameworkElement
         set => SetValue(BarBrushProperty, value);
     }
 
+    public Brush LatestBarBrush
+    {
+        get => (Brush)GetValue(LatestBarBrushProperty);
+        set => SetValue(LatestBarBrushProperty, value);
+    }
+
+    public bool HighlightLatestBar
+    {
+        get => (bool)GetValue(HighlightLatestBarProperty);
+        set => SetValue(HighlightLatestBarProperty, value);
+    }
+
     protected override void OnRender(DrawingContext drawingContext)
     {
         base.OnRender(drawingContext);
@@ -57,8 +83,12 @@ public sealed class CpuBarsControl : FrameworkElement
         }
 
         var values = CpuCalculator.DownsampleBars(Values, MaxBars);
-        var gap = values.Length <= 14 ? 1.5 : 2.2;
-        var barWidth = Math.Max(1.8, (ActualWidth - gap * (values.Length - 1)) / values.Length);
+        var gap = values.Length >= 20
+            ? 0.6
+            : values.Length > 14
+                ? 1
+                : 1.5;
+        var barWidth = Math.Max(0.8, (ActualWidth - gap * (values.Length - 1)) / values.Length);
 
         for (var index = 0; index < values.Length; index++)
         {
@@ -66,7 +96,7 @@ public sealed class CpuBarsControl : FrameworkElement
             var height = ActualHeight * percent;
             var x = index * (barWidth + gap);
             drawingContext.DrawRoundedRectangle(
-                BarBrush,
+                HighlightLatestBar && index == values.Length - 1 ? LatestBarBrush : BarBrush,
                 null,
                 new Rect(x, ActualHeight - height, barWidth, height),
                 1.1,

@@ -104,8 +104,9 @@
                         <controls:CpuBarsControl x:Name="CpuLargeBars"
                                                   Height="28"
                                                   Margin="0,7,0,0"
-                                                  MaxBars="16"
-                                                  BarBrush="{StaticResource CpuCoralBrush}"/>
+                                                  MaxBars="24"
+                                                  BarBrush="{StaticResource CpuCoralBrush}"
+                                                  LatestBarBrush="{StaticResource CpuLatestBrush}"/>
                         <TextBlock x:Name="CpuCoresText"
                                    Margin="0,6,0,0"
                                    Text="0 logical cores"

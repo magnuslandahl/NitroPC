@@ -10,6 +10,7 @@ namespace NitroPC.Services;
 public sealed class SystemMetricsService : IDisposable
 {
     private readonly DispatcherTimer _timer;
+    private readonly RingBuffer _cpuHistory = new(24);
     private readonly RingBuffer _ramHistory = new(24);
     private NativeMethods.SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION[]? _previous;
     private bool _disposed;
@@ -69,6 +70,7 @@ public sealed class SystemMetricsService : IDisposable
             ? (TotalPercent: 0.0, CorePercents: new double[current.Length])
             : CpuCalculator.ComputeUsage(_previous, current);
         _previous = current;
+        _cpuHistory.Push(usage.TotalPercent);
 
         var memory = new NativeMethods.MEMORYSTATUSEX
         {
@@ -90,6 +92,7 @@ public sealed class SystemMetricsService : IDisposable
         MetricsUpdated?.Invoke(new MetricsSnapshot(
             usage.TotalPercent,
             usage.CorePercents,
+            _cpuHistory.ToArray(),
             usage.CorePercents.Length,
             ramPercent,
             usedBytes / 1024.0 / 1024.0 / 1024.0,

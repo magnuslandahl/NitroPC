@@ -34,8 +34,9 @@
                 <controls:CpuBarsControl x:Name="CpuBars"
                                           Width="50"
                                           Height="18"
-                                          MaxBars="14"
+                                          MaxBars="24"
                                           BarBrush="{StaticResource CpuCoralBrush}"
+                                          LatestBarBrush="{StaticResource CpuLatestBrush}"
                                           VerticalAlignment="Bottom"/>
                 <StackPanel Margin="7,0,0,0" Width="36" VerticalAlignment="Bottom">
                     <TextBlock Text="CPU"

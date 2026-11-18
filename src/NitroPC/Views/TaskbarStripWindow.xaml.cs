@@ -46,7 +46,10 @@ public sealed partial class TaskbarStripWindow : Window
     public void UpdateMetrics(MetricsSnapshot metrics)
     {
         _latestMetrics = metrics;
-        CpuBars.Values = metrics.CpuCorePercents;
+        CpuBars.Values = _settings.CpuDisplayMode == CpuDisplayMode.History
+            ? metrics.CpuHistoryPercents
+            : metrics.CpuCorePercents;
+        CpuBars.HighlightLatestBar = _settings.CpuDisplayMode == CpuDisplayMode.History;
         CpuValue.Text = $"{Math.Round(metrics.CpuTotalPercent):0}%";
         RamSparkline.Values = metrics.RamHistoryPercents;
         RamValue.Text = FormatRamValue(metrics, _settings.RamDisplayMode);
@@ -92,6 +95,10 @@ public sealed partial class TaskbarStripWindow : Window
 
         if (_latestMetrics is not null)
         {
+            CpuBars.Values = settings.CpuDisplayMode == CpuDisplayMode.History
+                ? _latestMetrics.CpuHistoryPercents
+                : _latestMetrics.CpuCorePercents;
+            CpuBars.HighlightLatestBar = settings.CpuDisplayMode == CpuDisplayMode.History;
             RamValue.Text = FormatRamValue(_latestMetrics, settings.RamDisplayMode);
         }
 

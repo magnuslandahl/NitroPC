@@ -48,8 +48,15 @@ public sealed partial class ToolboxFlyoutWindow : Window
     public void UpdateMetrics(MetricsSnapshot metrics)
     {
         CpuLargeValue.Text = $"{Math.Round(metrics.CpuTotalPercent):0}%";
-        CpuLargeBars.Values = metrics.CpuCorePercents;
-        CpuCoresText.Text = $"{metrics.LogicalCoreCount} logical cores";
+        CpuLargeBars.Values = _settings.CpuDisplayMode == CpuDisplayMode.History
+            ? metrics.CpuHistoryPercents
+            : metrics.CpuCorePercents;
+        CpuLargeBars.HighlightLatestBar = _settings.CpuDisplayMode == CpuDisplayMode.History;
+        CpuCoresText.Text = _settings.CpuDisplayMode == CpuDisplayMode.History
+            ? "24-second history"
+            : metrics.LogicalCoreCount > 24
+                ? $"{metrics.LogicalCoreCount} logical cores, grouped"
+                : $"{metrics.LogicalCoreCount} logical cores";
         RamLargeValue.Text = $"{Math.Round(metrics.RamPercent):0}%";
         RamLargeSparkline.Values = metrics.RamHistoryPercents;
         RamDetailText.Text = $"{metrics.RamUsedGb:0.0} / {metrics.RamTotalGb:0.0} GB used";
