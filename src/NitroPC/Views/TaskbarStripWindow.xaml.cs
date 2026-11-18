@@ -205,7 +205,7 @@ public sealed partial class TaskbarStripWindow : Window
             rebarRect = foundRebarRect;
         }
 
-        var safeX = TaskbarLayout.FindRightAnchoredSlot(
+        var safeX = TaskbarLayout.FindAvailableSlot(
             shellRect,
             notifyRect,
             rebarRect,

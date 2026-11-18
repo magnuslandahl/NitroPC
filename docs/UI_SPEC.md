@@ -66,6 +66,7 @@ This document defines the exact visual design, layout metrics, colors, icons, an
 ### A. Taskbar Strip (`TaskbarStripWindow`)
 - **Outer Window Height**: Matches taskbar height dynamically (on standard Windows 11 taskbar = `48` DIPs; inner pill height = `36` DIPs, vertically centered, `CornerRadius="7"`, horizontal padding `10,0`).
 - **Width**: `SizeToContent="Width"` with fixed-width metric text columns so changing values never move the neighboring charts.
+- **Dock anchor**: Prefer the first free slot immediately after `ReBarWindow32` rather than immediately beside `TrayNotifyWnd`; Windows 11 renders Weather/Widgets inside a full-width XAML composition window with no separate Win32 bounds.
 - **Horizontal Element Sequence** (gap `10` DIPs between sections):
   1. **CPU Unit**:
      - `CpuBarsControl`: `Width="50"`, `Height="18"`, up to **24 vertical rounded bars**. The chart is bottom-aligned with the metric readout.

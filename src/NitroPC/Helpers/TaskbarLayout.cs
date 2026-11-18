@@ -4,7 +4,7 @@ namespace NitroPC.Helpers;
 
 internal static class TaskbarLayout
 {
-    public static int? FindRightAnchoredSlot(
+    public static int? FindAvailableSlot(
         NativeMethods.RECT shell,
         NativeMethods.RECT tray,
         NativeMethods.RECT? rebar,
@@ -17,12 +17,21 @@ internal static class TaskbarLayout
             return null;
         }
 
-        var minimumX = rebar is { } value
-            ? Math.Max(shell.Left + margin, value.Right + margin)
-            : shell.Left + margin;
-        var candidate = tray.Left - margin - width;
+        var minimumX = shell.Left + margin;
+        var maximumX = tray.Left - margin - width;
+        if (maximumX < minimumX)
+        {
+            return null;
+        }
 
-        while (candidate >= minimumX)
+        // Place the strip immediately after the task-list rebar. Windows 11
+        // renders Widgets/Weather inside a full-width composition window, so
+        // anchoring beside the tray cannot detect or avoid that overlap.
+        var candidate = rebar is { } value
+            ? Math.Clamp(value.Right + margin, minimumX, maximumX)
+            : maximumX;
+
+        while (candidate <= maximumX)
         {
             var colliding = obstacles
                 .Where(rect => Overlaps(candidate, width, rect.Left, rect.Right))
@@ -35,7 +44,7 @@ internal static class TaskbarLayout
                 return candidate;
             }
 
-            candidate = colliding.Value.Left - margin - width;
+            candidate = colliding.Value.Right + margin;
         }
 
         return null;

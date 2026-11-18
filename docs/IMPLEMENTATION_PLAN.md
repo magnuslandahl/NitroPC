@@ -16,7 +16,7 @@ NitroPC combines two utilities into one sleek Windows 11 taskbar toolbox:
 
 The feedback pass added these behavior and safety requirements to the original phases:
 
-- `TaskbarLayout` searches to the left of `TrayNotifyWnd` for a collision-free slot and uses the tray icon if no safe taskbar space exists. Fixed percentage columns and bottom-aligned charts prevent horizontal movement.
+- `TaskbarLayout` searches immediately after `ReBarWindow32` for a collision-free slot, because Windows 11 renders Weather/Widgets inside a full-width composition window without a separate Win32 rectangle. It only falls back to the tray-side placement when the task-list rebar cannot be read. Fixed percentage columns and bottom-aligned charts prevent horizontal movement.
 - `SystemMetricsService` retains 24 seconds of total CPU history. `CpuDisplayMode` selects logical cores or history in both the strip and flyout; the newest history bar and RAM sample receive stronger accents.
 - Secondary flyout controls live behind the header gear. The default flyout keeps metrics, Keep Awake, and Quiet Mode visible.
 - `QuietModeService` reads the active plan's `PERFBOOSTMODE` AC/DC values, persists a recovery marker, writes `Disabled` (`0`) only to that setting, and restores the original values on exit. It never writes fan speed or other processor policy values.
