@@ -44,7 +44,9 @@ This document defines the exact visual design, layout metrics, colors, icons, an
 | `TextPrimaryBrush` | Primary metric numbers & titles | `#F3F7F9` | `#FFF3F7F9` |
 | `TextMutedBrush` | Uppercase labels (`CPU`, `RAM`) & subtitles | `#97AEB7` | `#FF97AEB7` |
 | `CpuCoralBrush` | CPU vertical bars & CPU % highlight | `#F3A683` | `#FFF3A683` |
+| `CpuLatestBrush` | Newest CPU history bar | `#FFD6B5` | `#FFFFD6B5` |
 | `RamBlueBrush` | RAM sparkline stroke, RAM %, active switch | `#6EC6FF` | `#FF6EC6FF` |
+| `RamLatestBrush` | Newest RAM history sample | `#B8E7FF` | `#FFB8E7FF` |
 | `RamFillBrush` | RAM sparkline area fill under curve | `rgba(110, 198, 255, 0.25)` | `#406EC6FF` |
 | `SparkGuideBrush` | Top dashed ceiling guide line in RAM sparkline | `rgba(255, 255, 255, 0.20)` | `#33FFFFFF` |
 | `KaffeAmberBrush` | Active Keep-Awake icon, progress bar & Stop button | `#FBBF24` | `#FFFBBF24` |
@@ -63,11 +65,12 @@ This document defines the exact visual design, layout metrics, colors, icons, an
 
 ### A. Taskbar Strip (`TaskbarStripWindow`)
 - **Outer Window Height**: Matches taskbar height dynamically (on standard Windows 11 taskbar = `48` DIPs; inner pill height = `36` DIPs, vertically centered, `CornerRadius="7"`, horizontal padding `10,0`).
-- **Width**: `SizeToContent="Width"` (typically `~220–250` DIPs with badge, `~155` DIPs without badge).
+- **Width**: `SizeToContent="Width"` with fixed-width metric text columns so changing values never move the neighboring charts.
 - **Horizontal Element Sequence** (gap `10` DIPs between sections):
   1. **CPU Unit**:
-     - `CpuBarsControl`: `Width="50"`, `Height="18"`, **14 vertical rounded bars** (`barWidth = 2.2`, `gap = 1.4`, `cornerRadius = 1.1`, minimum bar height = `18%` of control height so idle cores still render visible coral ticks).
-       - *Note*: If the PC has `> 14` logical cores (e.g., 24 cores), downsample/average adjacent cores into 14 buckets for the strip so the width stays fixed at `50` DIPs!
+     - `CpuBarsControl`: `Width="50"`, `Height="18"`, up to **24 vertical rounded bars**. The chart is bottom-aligned with the metric readout.
+       - **Cores**: shows logical cores directly; systems with more than 24 logical cores are grouped.
+       - **History**: shows the latest 24 one-second total-CPU samples and highlights the newest bar with `CpuLatestBrush`.
      - Stacked Text (`Margin="7,0,0,0"`):
        - Top: `CPU` (`FontSize="9"`, `FontWeight="Bold"`, `Foreground="{StaticResource TextMutedBrush}"`)
        - Bottom: `24%` (`FontSize="13.5"`, `FontWeight="Bold"`, `Foreground="{StaticResource TextPrimaryBrush}"`)
@@ -75,7 +78,7 @@ This document defines the exact visual design, layout metrics, colors, icons, an
   3. **RAM Unit**:
      - `RamSparklineControl`: `Width="44"`, `Height="20"`:
        - Top dashed horizontal guide line at `Y = 3` (`StrokeThickness = 1`, dash `3,3`, `SparkGuideBrush`).
-       - Smooth polyline/curve of last `12` RAM % samples (`0–100%` mapped to `Y = Height - 2` .. `Y = 3`), filled underneath with `RamFillBrush` and stroked on top with `RamBlueBrush` (`StrokeThickness = 2.0`).
+       - Smooth polyline of 24 RAM % samples (`0–100%` mapped to `Y = Height - 2` .. `Y = 3`), with the latest point highlighted by `RamLatestBrush`.
      - Stacked Text (`Margin="7,0,0,0"`):
        - Top: `RAM` (`FontSize="9"`, `FontWeight="Bold"`, `Foreground="{StaticResource TextMutedBrush}"`)
        - Bottom (`RamDisplayMode` setting):
@@ -110,15 +113,16 @@ Use a `Viewbox` (`Width="15" Height="15"`) containing a `Canvas` (`Width="24" He
 ### B. Toolbox Flyout (`ToolboxFlyoutWindow`)
 - **Size**: `Width="352"`, `SizeToContent="Height"`, `CornerRadius="12"`, `Padding="16"`, outer margin `12` (room for subtle drop shadow).
 - **Anchor Position**: `10` DIPs above the top of the Windows taskbar, right-aligned with `TaskbarStripWindow` (clamped to `Screen.WorkingArea` so it never goes off-screen).
+- **Header controls**: Status remains visible beside the title; the settings glyph expands/collapses the secondary settings panel and repositions the flyout above the strip.
 - **Sections** (`12` DIP vertical spacing):
   1. **Header Row**:
      - Left: `24×24` rounded gradient badge (`#FFF3A683` -> `#FF6EC6FF`, bold dark `N`) + `NitroPC Toolbox` (`FontSize="13.5"`, `FontWeight="SemiBold"`).
-     - Right: Status pill (`● Awake · 00:48:19` in amber when active, `● Idle` in muted gray when inactive).
+     - Right: Status pill (`● Awake · 00:48:19` in amber when active, `● Idle` in muted gray when inactive) and gear button.
   2. **2-Column Telemetry Grid** (`Gap = 10` DIPs):
      - **Left Card — CPU Load**:
        - Header: `CPU LOAD` + large coral `24%` (`FontSize="20"`, `FontWeight="Bold"`).
-       - Graph: `CpuBarsControl` (`Height="28"`, up to `16` bars).
-       - Subtitle: `{CoreCount} logical cores`.
+       - Graph: `CpuBarsControl` (`Height="28"`, up to 24 bars).
+       - Subtitle: `{CoreCount} logical cores` or `24-second history`.
      - **Right Card — Memory**:
        - Header: `MEMORY` + large sky-blue `64%` (`FontSize="20"`, `FontWeight="Bold"`).
        - Graph: `RamSparklineControl` (`Height="28"`, `24` history samples).
@@ -128,13 +132,17 @@ Use a `Viewbox` (`Width="15" Height="15"`) containing a `Canvas` (`Width="24" He
      - Top row: `☕ Keep Awake` title + status subtitle (`Active — prevents sleep, lock & Teams away` vs `Paused — normal Windows sleep & idle rules`) + **Start / Stop** button (`#FFFBBF24` amber background with dark text `#FF171205` when Awake; subtle `#1AFFFFFF` button with white text when Idle).
      - Preset row: 5 preset buttons (`30m`, `1h`, `2h`, `4h`, `∞`) + Custom Minutes `TextBox` (`Width="48"`, integer `1..1440`, pressing `Enter` or clicking `Start` applies custom minutes and saves to settings). Clicking any preset immediately starts Keep Awake for that duration!
      - Countdown progress bar (`Height="3"`, fills proportionally `remaining / total`, `100%` when `∞`, `0%` when Idle).
-  4. **Settings / Display Row**:
+  4. **Quiet Mode Card**:
+     - Toggle temporarily disables Windows processor boost on AC and battery power.
+     - Copy explicitly describes processor boost only and automatic restoration on exit; NitroPC does not claim OEM fan-speed control.
+  5. **Settings / Display Panel (header gear)**:
      - Compact segmented selector or cycle pills for:
+       - **CPU on Bar**: `Cores` | `History`
        - **RAM on Bar**: `%` | `GB` | `% + GB`
        - **Awake on Bar**: `Badge` | `Icon` | `Hide`
-  5. **Footer Row**:
-     - Left: Windows 11-style toggle switch for **Start with Windows**.
-     - Right: Subtle **Quit** text button (`Quit`) to cleanly exit NitroPC.
+  6. **Footer (inside settings panel)**:
+     - Windows 11-style switches for **Start with Windows** and automatic update checks.
+     - **Check for updates** and clear **Quit NitroPC** actions.
 
 ---
 

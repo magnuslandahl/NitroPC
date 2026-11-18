@@ -37,6 +37,13 @@ public sealed class RamSparklineControl : FrameworkElement
             typeof(RamSparklineControl),
             new FrameworkPropertyMetadata(WpfBrushes.Gray, FrameworkPropertyMetadataOptions.AffectsRender));
 
+    public static readonly DependencyProperty LatestPointBrushProperty =
+        DependencyProperty.Register(
+            nameof(LatestPointBrush),
+            typeof(Brush),
+            typeof(RamSparklineControl),
+            new FrameworkPropertyMetadata(WpfBrushes.White, FrameworkPropertyMetadataOptions.AffectsRender));
+
     public IReadOnlyList<double> Values
     {
         get => (IReadOnlyList<double>)GetValue(ValuesProperty);
@@ -59,6 +66,12 @@ public sealed class RamSparklineControl : FrameworkElement
     {
         get => (Brush)GetValue(GuideBrushProperty);
         set => SetValue(GuideBrushProperty, value);
+    }
+
+    public Brush LatestPointBrush
+    {
+        get => (Brush)GetValue(LatestPointBrushProperty);
+        set => SetValue(LatestPointBrushProperty, value);
     }
 
     protected override void OnRender(DrawingContext drawingContext)
@@ -110,5 +123,7 @@ public sealed class RamSparklineControl : FrameworkElement
             LineJoin = PenLineJoin.Round
         };
         drawingContext.DrawGeometry(null, linePen, lineGeometry);
+        var latest = points[^1];
+        drawingContext.DrawEllipse(LatestPointBrush, null, latest, 2.25, 2.25);
     }
 }

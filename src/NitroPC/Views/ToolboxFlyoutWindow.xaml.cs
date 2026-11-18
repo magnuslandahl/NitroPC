@@ -42,6 +42,8 @@ public sealed partial class ToolboxFlyoutWindow : Window
 
     public event Action? KeepAwakeStopRequested;
 
+    public event Action<bool>? QuietModeChangedRequested;
+
     public event Action<bool>? StartupChangedRequested;
 
     public event Action? QuitRequested;
@@ -123,6 +125,21 @@ public sealed partial class ToolboxFlyoutWindow : Window
         }
 
         StartupToggle.IsChecked = enabled;
+    }
+
+    public void SetQuietModeEnabled(bool enabled)
+    {
+        if (QuietModeToggle.IsChecked != enabled)
+        {
+            QuietModeToggle.IsChecked = enabled;
+        }
+
+        QuietModeDetailText.Text = enabled
+            ? "CPU boost off — reduced heat and fan demand"
+            : "CPU boost on — normal Windows power policy";
+        QuietModeCard.BorderBrush = enabled
+            ? (Brush)FindResource("RamBlueBrush")
+            : (Brush)FindResource("CardBorderBrush");
     }
 
     public void SetUpdateStatus(string text)
@@ -273,6 +290,11 @@ public sealed partial class ToolboxFlyoutWindow : Window
     private void OnStartupChanged(object sender, RoutedEventArgs e)
     {
         StartupChangedRequested?.Invoke(StartupToggle.IsChecked == true);
+    }
+
+    private void OnQuietModeChanged(object sender, RoutedEventArgs e)
+    {
+        QuietModeChangedRequested?.Invoke(QuietModeToggle.IsChecked == true);
     }
 
     private void OnAutomaticUpdatesChanged(object sender, RoutedEventArgs e)

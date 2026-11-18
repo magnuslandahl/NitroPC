@@ -158,7 +158,8 @@
                                                        Margin="0,7,0,0"
                                                        StrokeBrush="{StaticResource RamBlueBrush}"
                                                        FillBrush="{StaticResource RamFillBrush}"
-                                                       GuideBrush="{StaticResource SparkGuideBrush}"/>
+                                                       GuideBrush="{StaticResource SparkGuideBrush}"
+                                                       LatestPointBrush="{StaticResource RamLatestBrush}"/>
                         <TextBlock x:Name="RamDetailText"
                                    Margin="0,6,0,0"
                                    Text="0.0 / 0.0 GB used"
@@ -249,6 +250,53 @@
                                  Foreground="{StaticResource KaffeAmberBrush}"
                                  Background="#14FFFFFF"/>
                 </StackPanel>
+            </Border>
+
+            <Border x:Name="QuietModeCard"
+                    Margin="0,12,0,0"
+                    Padding="12"
+                    Background="{StaticResource CardBackgroundBrush}"
+                    BorderBrush="{StaticResource CardBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE9DA;"
+                                       Margin="0,0,6,0"
+                                       VerticalAlignment="Center"
+                                       FontFamily="Segoe MDL2 Assets"
+                                       FontSize="14"
+                                       Foreground="{StaticResource RamBlueBrush}"/>
+                            <TextBlock Text="Quiet Mode"
+                                       FontFamily="{StaticResource NitroFont}"
+                                       FontSize="13"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"/>
+                        </StackPanel>
+                        <TextBlock x:Name="QuietModeDetailText"
+                                   Margin="0,2,0,0"
+                                   Text="CPU boost on — normal Windows power policy"
+                                   FontFamily="{StaticResource NitroFont}"
+                                   FontSize="10.5"
+                                   Foreground="{StaticResource TextMutedBrush}"/>
+                        <TextBlock Margin="0,2,0,0"
+                                   Text="Processor boost only. Restored automatically on exit."
+                                   FontFamily="{StaticResource NitroFont}"
+                                   FontSize="9.5"
+                                   Foreground="{StaticResource TextMutedBrush}"/>
+                    </StackPanel>
+                    <ToggleButton x:Name="QuietModeToggle"
+                                  Grid.Column="1"
+                                  VerticalAlignment="Center"
+                                  Style="{StaticResource NitroToggle}"
+                                  Checked="OnQuietModeChanged"
+                                  Unchecked="OnQuietModeChanged"/>
+                </Grid>
             </Border>
 
             <StackPanel x:Name="SettingsPanel" Visibility="Collapsed">

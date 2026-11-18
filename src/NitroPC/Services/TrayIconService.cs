@@ -8,6 +8,7 @@ public sealed class TrayIconService : IDisposable
 {
     private readonly WinForms.NotifyIcon _notifyIcon = new();
     private readonly WinForms.ToolStripMenuItem _stopItem;
+    private readonly WinForms.ToolStripMenuItem _quietModeItem;
     private readonly WinForms.ToolStripMenuItem _startupItem;
     private bool _disposed;
 
@@ -23,6 +24,14 @@ public sealed class TrayIconService : IDisposable
         menu.Items.Add(Item("Keep Awake — Indefinite (∞)", () => StartKeepAwakeRequested?.Invoke(null)));
         _stopItem = Item("Stop Keep Awake", () => StopKeepAwakeRequested?.Invoke());
         menu.Items.Add(_stopItem);
+        menu.Items.Add(new WinForms.ToolStripSeparator());
+        _quietModeItem = Item("Quiet Mode — Disable CPU boost", () =>
+        {
+            var enabled = _quietModeItem is not { Checked: true };
+            QuietModeChangedRequested?.Invoke(enabled);
+        });
+        _quietModeItem.CheckOnClick = false;
+        menu.Items.Add(_quietModeItem);
         menu.Items.Add(new WinForms.ToolStripSeparator());
         _startupItem = Item("Start with Windows", () =>
         {
@@ -49,6 +58,8 @@ public sealed class TrayIconService : IDisposable
 
     public event Action? StopKeepAwakeRequested;
 
+    public event Action<bool>? QuietModeChangedRequested;
+
     public event Action<bool>? StartupChangedRequested;
 
     public event Action? CheckForUpdatesRequested;
@@ -71,6 +82,11 @@ public sealed class TrayIconService : IDisposable
     public void SetStartupEnabled(bool enabled)
     {
         _startupItem.Checked = enabled;
+    }
+
+    public void SetQuietModeEnabled(bool enabled)
+    {
+        _quietModeItem.Checked = enabled;
     }
 
     public void ShowContextMenu()

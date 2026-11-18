@@ -43,6 +43,49 @@ internal static class NativeMethods
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool GlobalMemoryStatusEx(ref MEMORYSTATUSEX lpBuffer);
 
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern IntPtr LocalFree(IntPtr hMem);
+
+    [DllImport("powrprof.dll", SetLastError = true)]
+    public static extern uint PowerGetActiveScheme(
+        IntPtr userRootPowerKey,
+        out IntPtr activePolicyGuid);
+
+    [DllImport("powrprof.dll")]
+    public static extern uint PowerReadACValueIndex(
+        IntPtr rootPowerKey,
+        ref Guid schemeGuid,
+        ref Guid subGroupOfPowerSettingsGuid,
+        ref Guid powerSettingGuid,
+        out uint acValueIndex);
+
+    [DllImport("powrprof.dll")]
+    public static extern uint PowerReadDCValueIndex(
+        IntPtr rootPowerKey,
+        ref Guid schemeGuid,
+        ref Guid subGroupOfPowerSettingsGuid,
+        ref Guid powerSettingGuid,
+        out uint dcValueIndex);
+
+    [DllImport("powrprof.dll")]
+    public static extern uint PowerWriteACValueIndex(
+        IntPtr rootPowerKey,
+        ref Guid schemeGuid,
+        ref Guid subGroupOfPowerSettingsGuid,
+        ref Guid powerSettingGuid,
+        uint acValueIndex);
+
+    [DllImport("powrprof.dll")]
+    public static extern uint PowerWriteDCValueIndex(
+        IntPtr rootPowerKey,
+        ref Guid schemeGuid,
+        ref Guid subGroupOfPowerSettingsGuid,
+        ref Guid powerSettingGuid,
+        uint dcValueIndex);
+
+    [DllImport("powrprof.dll")]
+    public static extern uint PowerSetActiveScheme(IntPtr userRootPowerKey, ref Guid schemeGuid);
+
     [Flags]
     public enum EXECUTION_STATE : uint
     {

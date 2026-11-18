@@ -63,3 +63,11 @@
      NitroPC exits; never replace locked files from the main WPF process.
    - Keep [`docs/AUTO_UPDATE.md`](docs/AUTO_UPDATE.md) aligned with release
      packaging and updater behavior.
+
+8. **Quiet Mode Safety**:
+   - Change only the active scheme's AC/DC `Processor performance boost mode`
+     (`PERFBOOSTMODE`) setting. Never write fan curves, maximum processor
+     state, OEM firmware controls, or unrelated power settings.
+   - Persist the original plan/value tuple before applying boost mode `0`,
+     restore it on exit, and recover/clear the marker on the next launch after
+     an interrupted session.

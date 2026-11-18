@@ -12,6 +12,17 @@ NitroPC combines two utilities into one sleek Windows 11 taskbar toolbox:
 2. **Keep-Alive ("Kaffe") Engine**: Replaces a legacy standalone WPF utility (`Kaffe`, which used a basic gray window, saved `KeepAwakeMinutes` in the registry, and toggled `NumLock` every 60 seconds) with a dual-layer Keep-Alive service (`SetThreadExecutionState` + silent `VK_F15` `SendInput` every 60s) controlled from a dark Windows 11 Flyout and quick taskbar badge.
 3. **Start with Windows**: User-level registry auto-start (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run\NitroPC`) requiring zero administrator elevation.
 
+## Implemented Refinements
+
+The feedback pass added these behavior and safety requirements to the original phases:
+
+- `TaskbarLayout` searches to the left of `TrayNotifyWnd` for a collision-free slot and uses the tray icon if no safe taskbar space exists. Fixed percentage columns and bottom-aligned charts prevent horizontal movement.
+- `SystemMetricsService` retains 24 seconds of total CPU history. `CpuDisplayMode` selects logical cores or history in both the strip and flyout; the newest history bar and RAM sample receive stronger accents.
+- Secondary flyout controls live behind the header gear. The default flyout keeps metrics, Keep Awake, and Quiet Mode visible.
+- `QuietModeService` reads the active plan's `PERFBOOSTMODE` AC/DC values, persists a recovery marker, writes `Disabled` (`0`) only to that setting, and restores the original values on exit. It never writes fan speed or other processor policy values.
+- `QuietModeRecoveryState` remains in `settings.json` only while a changed policy is active. NitroPC restores and clears interrupted-session state on the next launch.
+- `TaskbarLayoutTests` and `QuietModeServiceTests` cover collision fallback, original-policy persistence, restore, interrupted recovery, and rollback after a failed change.
+
 ---
 
 ## Target Repository Structure

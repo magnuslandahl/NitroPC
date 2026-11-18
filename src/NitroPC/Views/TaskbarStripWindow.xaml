@@ -67,6 +67,7 @@
                                                StrokeBrush="{StaticResource RamBlueBrush}"
                                                FillBrush="{StaticResource RamFillBrush}"
                                                GuideBrush="{StaticResource SparkGuideBrush}"
+                                               LatestPointBrush="{StaticResource RamLatestBrush}"
                                                VerticalAlignment="Bottom"/>
                 <StackPanel x:Name="RamValuePanel"
                             Margin="7,0,0,0"

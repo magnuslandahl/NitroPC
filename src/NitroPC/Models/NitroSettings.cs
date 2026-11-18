@@ -20,6 +20,11 @@ public enum KeepAwakeBarMode
     Hidden
 }
 
+public sealed record QuietModeRecoveryState(
+    Guid SchemeId,
+    uint AcProcessorBoostMode,
+    uint DcProcessorBoostMode);
+
 public sealed class NitroSettings
 {
     /// <summary>0 means indefinite. The default session length is 60 minutes.</summary>
@@ -34,4 +39,6 @@ public sealed class NitroSettings
     public KeepAwakeBarMode KeepAwakeBarMode { get; set; } = KeepAwakeBarMode.Badge;
 
     public bool AutomaticallyCheckForUpdates { get; set; } = true;
+
+    public QuietModeRecoveryState? QuietModeRecoveryState { get; set; }
 }

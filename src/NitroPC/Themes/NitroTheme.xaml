@@ -13,6 +13,7 @@
     <SolidColorBrush x:Key="CpuCoralBrush" Color="#FFF3A683"/>
     <SolidColorBrush x:Key="CpuLatestBrush" Color="#FFFFD6B5"/>
     <SolidColorBrush x:Key="RamBlueBrush" Color="#FF6EC6FF"/>
+    <SolidColorBrush x:Key="RamLatestBrush" Color="#FFB8E7FF"/>
     <SolidColorBrush x:Key="RamFillBrush" Color="#406EC6FF"/>
     <SolidColorBrush x:Key="SparkGuideBrush" Color="#33FFFFFF"/>
     <SolidColorBrush x:Key="KaffeAmberBrush" Color="#FFFBBF24"/>

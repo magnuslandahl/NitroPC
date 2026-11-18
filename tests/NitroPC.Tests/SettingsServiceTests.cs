@@ -17,7 +17,8 @@ public sealed class SettingsServiceTests
             RamDisplayMode = RamDisplayMode.Both,
             KeepAwakeBarMode = KeepAwakeBarMode.CompactIcon,
             AutoStartKeepAwakeOnLaunch = true,
-            AutomaticallyCheckForUpdates = false
+            AutomaticallyCheckForUpdates = false,
+            QuietModeRecoveryState = new QuietModeRecoveryState(Guid.NewGuid(), 2, 4)
         };
 
         service.Save(expected);
@@ -29,6 +30,7 @@ public sealed class SettingsServiceTests
         Assert.Equal(expected.KeepAwakeBarMode, actual.KeepAwakeBarMode);
         Assert.Equal(expected.AutoStartKeepAwakeOnLaunch, actual.AutoStartKeepAwakeOnLaunch);
         Assert.Equal(expected.AutomaticallyCheckForUpdates, actual.AutomaticallyCheckForUpdates);
+        Assert.Equal(expected.QuietModeRecoveryState, actual.QuietModeRecoveryState);
     }
 
     [Fact]

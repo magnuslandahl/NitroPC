@@ -19,6 +19,7 @@ public partial class App : WpfApplication
     private StartupService? _startupService;
     private SystemMetricsService? _metricsService;
     private KeepAwakeService? _keepAwakeService;
+    private QuietModeService? _quietModeService;
     private UpdateService? _updateService;
     private TrayIconService? _trayIconService;
     private TaskbarStripWindow? _stripWindow;
@@ -47,15 +48,20 @@ public partial class App : WpfApplication
         _startupService = new StartupService();
         _metricsService = new SystemMetricsService();
         _keepAwakeService = new KeepAwakeService();
+        _quietModeService = new QuietModeService(
+            _settings.QuietModeRecoveryState,
+            PersistQuietModeRecoveryState);
         _updateService = new UpdateService();
         _stripWindow = new TaskbarStripWindow(_settings);
         _flyoutWindow = new ToolboxFlyoutWindow(_settings);
         _trayIconService = new TrayIconService(_startupService.IsEnabled());
 
         WireEvents();
+        RecoverQuietMode();
         _stripWindow.ApplySettings(_settings);
         _stripWindow.Show();
         RefreshKeepAwakeState();
+        RefreshQuietModeState();
 
         try
         {
@@ -93,6 +99,7 @@ public partial class App : WpfApplication
         _keepAwakeService!.StateChanged += RefreshKeepAwakeState;
         _keepAwakeService.OperationFailed += exception =>
             ReportError("NitroPC could not maintain Keep Awake.", exception);
+        _quietModeService!.StateChanged += RefreshQuietModeState;
 
         _stripWindow!.ToggleFlyoutRequested += () => _flyoutWindow!.ToggleNearStrip(_stripWindow.PhysicalBounds);
         _stripWindow.ToggleKeepAwakeRequested += ToggleKeepAwake;
@@ -102,6 +109,7 @@ public partial class App : WpfApplication
         _flyoutWindow!.SettingsChanged += OnSettingsChanged;
         _flyoutWindow.KeepAwakeStartRequested += StartKeepAwake;
         _flyoutWindow.KeepAwakeStopRequested += StopKeepAwake;
+        _flyoutWindow.QuietModeChangedRequested += SetQuietModeEnabled;
         _flyoutWindow.StartupChangedRequested += SetStartupEnabled;
         _flyoutWindow.CheckForUpdatesRequested += () => _ = CheckForUpdatesAsync(interactive: true);
         _flyoutWindow.QuitRequested += Shutdown;
@@ -109,6 +117,7 @@ public partial class App : WpfApplication
         _trayIconService!.OpenRequested += () => _flyoutWindow!.ToggleNearStrip(_stripWindow!.PhysicalBounds);
         _trayIconService.StartKeepAwakeRequested += StartKeepAwake;
         _trayIconService.StopKeepAwakeRequested += StopKeepAwake;
+        _trayIconService.QuietModeChangedRequested += SetQuietModeEnabled;
         _trayIconService.StartupChangedRequested += SetStartupEnabled;
         _trayIconService.CheckForUpdatesRequested += () => _ = CheckForUpdatesAsync(interactive: true);
         _trayIconService.ExitRequested += Shutdown;
@@ -171,6 +180,77 @@ public partial class App : WpfApplication
         {
             ReportError("NitroPC could not stop Keep Awake.", exception);
         }
+    }
+
+    private void SetQuietModeEnabled(bool enabled)
+    {
+        try
+        {
+            _quietModeService!.Toggle(enabled);
+            RefreshQuietModeState();
+        }
+        catch (Win32Exception exception)
+        {
+            RefreshQuietModeState();
+            ReportError("NitroPC could not change the Windows processor boost policy.", exception);
+        }
+        catch (InvalidOperationException exception)
+        {
+            RefreshQuietModeState();
+            ReportError("Quiet Mode is not available in the current power state.", exception);
+        }
+        catch (IOException exception)
+        {
+            RefreshQuietModeState();
+            ReportError("NitroPC could not persist the Quiet Mode recovery state.", exception);
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            RefreshQuietModeState();
+            ReportError("NitroPC does not have permission to save the Quiet Mode state.", exception);
+        }
+        catch (AggregateException exception)
+        {
+            RefreshQuietModeState();
+            ReportError("Quiet Mode could not restore the Windows processor boost policy.", exception);
+        }
+    }
+
+    private void RefreshQuietModeState()
+    {
+        var enabled = _quietModeService?.IsActive == true;
+        _flyoutWindow?.SetQuietModeEnabled(enabled);
+        _trayIconService?.SetQuietModeEnabled(enabled);
+    }
+
+    private void RecoverQuietMode()
+    {
+        try
+        {
+            _quietModeService!.RecoverInterruptedSession();
+        }
+        catch (Win32Exception exception)
+        {
+            ReportError("NitroPC could not restore the previous processor boost policy.", exception);
+        }
+        catch (InvalidOperationException exception)
+        {
+            ReportError("NitroPC could not restore the previous processor boost policy.", exception);
+        }
+        catch (IOException exception)
+        {
+            ReportError("NitroPC restored Quiet Mode but could not clear its recovery marker.", exception);
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            ReportError("NitroPC restored Quiet Mode but could not clear its recovery marker.", exception);
+        }
+    }
+
+    private void PersistQuietModeRecoveryState(QuietModeRecoveryState? state)
+    {
+        _settings!.QuietModeRecoveryState = state;
+        _settingsService!.Save(_settings);
     }
 
     private void RefreshKeepAwakeState()
@@ -301,7 +381,30 @@ public partial class App : WpfApplication
     {
         try
         {
-            _metricsService?.Dispose();
+            try
+            {
+                _quietModeService?.Dispose();
+            }
+            catch (Win32Exception exception)
+            {
+                ReportError("NitroPC could not restore the Windows processor boost policy.", exception);
+            }
+            catch (InvalidOperationException exception)
+            {
+                ReportError("NitroPC could not restore the Windows processor boost policy.", exception);
+            }
+            catch (IOException exception)
+            {
+                ReportError("NitroPC restored Quiet Mode but could not clear its recovery marker.", exception);
+            }
+            catch (UnauthorizedAccessException exception)
+            {
+                ReportError("NitroPC restored Quiet Mode but could not clear its recovery marker.", exception);
+            }
+            finally
+            {
+                _metricsService?.Dispose();
+            }
         }
         finally
         {
