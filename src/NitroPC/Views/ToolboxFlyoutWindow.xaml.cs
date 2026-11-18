@@ -10,6 +10,7 @@ using NitroPC.Services;
 using Brush = System.Windows.Media.Brush;
 using Button = System.Windows.Controls.Button;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
+using WpfBrushes = System.Windows.Media.Brushes;
 using WinForms = System.Windows.Forms;
 
 namespace NitroPC.Views;
@@ -17,6 +18,8 @@ namespace NitroPC.Views;
 public sealed partial class ToolboxFlyoutWindow : Window
 {
     private readonly NitroSettings _settings;
+    private MetricsSnapshot? _latestMetrics;
+    private NativeMethods.RECT? _lastStripPhysicalRect;
 
     public ToolboxFlyoutWindow(NitroSettings settings)
     {
@@ -47,7 +50,16 @@ public sealed partial class ToolboxFlyoutWindow : Window
 
     public void UpdateMetrics(MetricsSnapshot metrics)
     {
+        _latestMetrics = metrics;
         CpuLargeValue.Text = $"{Math.Round(metrics.CpuTotalPercent):0}%";
+        ApplyCpuDisplay(metrics);
+        RamLargeValue.Text = $"{Math.Round(metrics.RamPercent):0}%";
+        RamLargeSparkline.Values = metrics.RamHistoryPercents;
+        RamDetailText.Text = $"{metrics.RamUsedGb:0.0} / {metrics.RamTotalGb:0.0} GB used";
+    }
+
+    private void ApplyCpuDisplay(MetricsSnapshot metrics)
+    {
         CpuLargeBars.Values = _settings.CpuDisplayMode == CpuDisplayMode.History
             ? metrics.CpuHistoryPercents
             : metrics.CpuCorePercents;
@@ -57,9 +69,6 @@ public sealed partial class ToolboxFlyoutWindow : Window
             : metrics.LogicalCoreCount > 24
                 ? $"{metrics.LogicalCoreCount} logical cores, grouped"
                 : $"{metrics.LogicalCoreCount} logical cores";
-        RamLargeValue.Text = $"{Math.Round(metrics.RamPercent):0}%";
-        RamLargeSparkline.Values = metrics.RamHistoryPercents;
-        RamDetailText.Text = $"{metrics.RamUsedGb:0.0} / {metrics.RamTotalGb:0.0} GB used";
     }
 
     public void UpdateKeepAwake(KeepAwakeService service)
@@ -134,9 +143,15 @@ public sealed partial class ToolboxFlyoutWindow : Window
             return;
         }
 
+        _lastStripPhysicalRect = stripPhysicalRect;
         Show();
         UpdateLayout();
+        PositionNearStrip(stripPhysicalRect);
+        Activate();
+    }
 
+    private void PositionNearStrip(NativeMethods.RECT stripPhysicalRect)
+    {
         var dpi = VisualTreeHelper.GetDpi(this);
         var widthPhysical = (int)Math.Ceiling(ActualWidth * dpi.DpiScaleX);
         var heightPhysical = (int)Math.Ceiling(ActualHeight * dpi.DpiScaleY);
@@ -152,7 +167,6 @@ public sealed partial class ToolboxFlyoutWindow : Window
 
         Left = x / dpi.DpiScaleX;
         Top = y / dpi.DpiScaleY;
-        Activate();
     }
 
     protected override void OnDeactivated(EventArgs e)
@@ -187,6 +201,21 @@ public sealed partial class ToolboxFlyoutWindow : Window
         }
     }
 
+    private void OnSettingsToggle(object sender, RoutedEventArgs e)
+    {
+        SettingsPanel.Visibility = SettingsPanel.Visibility == Visibility.Visible
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+        SettingsButton.Background = SettingsPanel.Visibility == Visibility.Visible
+            ? (Brush)FindResource("RamFillBrush")
+            : WpfBrushes.Transparent;
+        UpdateLayout();
+        if (_lastStripPhysicalRect is { } stripRect)
+        {
+            PositionNearStrip(stripRect);
+        }
+    }
+
     private void OnPresetClicked(object sender, RoutedEventArgs e)
     {
         var button = (Button)sender;
@@ -217,6 +246,19 @@ public sealed partial class ToolboxFlyoutWindow : Window
         var mode = Enum.Parse<RamDisplayMode>((string)((Button)sender).Tag);
         _settings.RamDisplayMode = mode;
         SettingsChanged?.Invoke(_settings);
+        ApplySelectionStyles();
+    }
+
+    private void OnCpuModeClicked(object sender, RoutedEventArgs e)
+    {
+        var mode = Enum.Parse<CpuDisplayMode>((string)((Button)sender).Tag);
+        _settings.CpuDisplayMode = mode;
+        SettingsChanged?.Invoke(_settings);
+        if (_latestMetrics is not null)
+        {
+            ApplyCpuDisplay(_latestMetrics);
+        }
+
         ApplySelectionStyles();
     }
 
@@ -270,6 +312,8 @@ public sealed partial class ToolboxFlyoutWindow : Window
 
     private void ApplySelectionStyles()
     {
+        SetSelected(CpuCoresButton, _settings.CpuDisplayMode == CpuDisplayMode.Cores);
+        SetSelected(CpuHistoryButton, _settings.CpuDisplayMode == CpuDisplayMode.History);
         SetSelected(RamPercentButton, _settings.RamDisplayMode == RamDisplayMode.Percent);
         SetSelected(RamGigabytesButton, _settings.RamDisplayMode == RamDisplayMode.Gigabytes);
         SetSelected(RamBothButton, _settings.RamDisplayMode == RamDisplayMode.Both);

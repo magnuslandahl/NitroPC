@@ -24,6 +24,7 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal">
                     <Border Width="24" Height="24" CornerRadius="6">
@@ -71,6 +72,20 @@
                                    Foreground="{StaticResource TextMutedBrush}"/>
                     </StackPanel>
                 </Border>
+                <Button x:Name="SettingsButton"
+                        Grid.Column="2"
+                        Width="28"
+                        Height="28"
+                        Margin="6,0,0,0"
+                        Padding="0"
+                        ToolTip="Display and application settings"
+                        Style="{StaticResource NitroTextButton}"
+                        Click="OnSettingsToggle">
+                    <TextBlock Text="&#xE713;"
+                               FontFamily="Segoe MDL2 Assets"
+                               FontSize="14"
+                               Foreground="{StaticResource TextMutedBrush}"/>
+                </Button>
             </Grid>
 
             <Grid Margin="0,12,0,0">
@@ -236,14 +251,38 @@
                 </StackPanel>
             </Border>
 
-            <Border Margin="0,12,0,0"
+            <StackPanel x:Name="SettingsPanel" Visibility="Collapsed">
+                <TextBlock Margin="2,14,0,6"
+                           Text="Display and app settings"
+                           FontFamily="{StaticResource NitroFont}"
+                           FontSize="11"
+                           FontWeight="SemiBold"
+                           Foreground="{StaticResource TextMutedBrush}"/>
+
+                <Border
                     Padding="10,8"
                     Background="{StaticResource CardBackgroundBrush}"
                     BorderBrush="{StaticResource CardBorderBrush}"
                     BorderThickness="1"
                     CornerRadius="10">
-                <StackPanel>
-                    <Grid>
+                    <StackPanel>
+                        <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="CPU on bar"
+                                   VerticalAlignment="Center"
+                                   FontFamily="{StaticResource NitroFont}"
+                                   FontSize="11"
+                                   Foreground="{StaticResource TextMutedBrush}"/>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal">
+                            <Button x:Name="CpuCoresButton" Content="Cores" Tag="Cores" Style="{StaticResource NitroChip}" Click="OnCpuModeClicked"/>
+                            <Button x:Name="CpuHistoryButton" Margin="4,0,0,0" Content="History" Tag="History" Style="{StaticResource NitroChip}" Click="OnCpuModeClicked"/>
+                        </StackPanel>
+                        </Grid>
+                        <Grid Margin="0,7,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
@@ -259,8 +298,8 @@
                             <Button x:Name="RamGigabytesButton" Margin="4,0,0,0" Content="GB" Tag="Gigabytes" Style="{StaticResource NitroChip}" Click="OnRamModeClicked"/>
                             <Button x:Name="RamBothButton" Margin="4,0,0,0" Content="% + GB" Tag="Both" Style="{StaticResource NitroChip}" Click="OnRamModeClicked"/>
                         </StackPanel>
-                    </Grid>
-                    <Grid Margin="0,7,0,0">
+                        </Grid>
+                        <Grid Margin="0,7,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
@@ -276,15 +315,15 @@
                             <Button x:Name="BarIconButton" Margin="4,0,0,0" Content="Icon" Tag="CompactIcon" Style="{StaticResource NitroChip}" Click="OnBarModeClicked"/>
                             <Button x:Name="BarHiddenButton" Margin="4,0,0,0" Content="Hide" Tag="Hidden" Style="{StaticResource NitroChip}" Click="OnBarModeClicked"/>
                         </StackPanel>
-                    </Grid>
-                </StackPanel>
-            </Border>
+                        </Grid>
+                    </StackPanel>
+                </Border>
 
-            <Border Margin="0,12,0,0"
-                    Padding="0,8,0,0"
-                    BorderBrush="{StaticResource CardBorderBrush}"
-                    BorderThickness="0,1,0,0">
-                <Grid>
+                <Border Margin="0,12,0,0"
+                        Padding="0,8,0,0"
+                        BorderBrush="{StaticResource CardBorderBrush}"
+                        BorderThickness="0,1,0,0">
+                    <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="6"/>
@@ -307,7 +346,7 @@
                                    Foreground="{StaticResource TextMutedBrush}"/>
                     </StackPanel>
                     <Button Grid.Column="1"
-                            Content="Quit"
+                            Content="Quit NitroPC"
                             Style="{StaticResource NitroTextButton}"
                             Click="OnQuitClicked"/>
 
@@ -325,19 +364,20 @@
                     </StackPanel>
                     <Button Grid.Row="2"
                             Grid.Column="1"
-                            Content="Check updates"
+                            Content="Check for updates"
                             Style="{StaticResource NitroTextButton}"
                             Click="OnCheckUpdatesClicked"/>
-                </Grid>
-            </Border>
+                    </Grid>
+                </Border>
 
-            <TextBlock x:Name="UpdateStatusText"
-                       Margin="0,7,0,0"
-                       Text=""
-                       TextWrapping="Wrap"
-                       FontFamily="{StaticResource NitroFont}"
-                       FontSize="10.5"
-                       Foreground="{StaticResource TextMutedBrush}"/>
+                <TextBlock x:Name="UpdateStatusText"
+                           Margin="0,7,0,0"
+                           Text=""
+                           TextWrapping="Wrap"
+                           FontFamily="{StaticResource NitroFont}"
+                           FontSize="10.5"
+                           Foreground="{StaticResource TextMutedBrush}"/>
+            </StackPanel>
         </StackPanel>
     </Border>
 </Window>
