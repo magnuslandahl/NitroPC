@@ -52,8 +52,38 @@ public sealed partial class TaskbarStripWindow : Window
         _latestMetrics = metrics;
         ApplyCpuMetrics(metrics, _settings.CpuDisplayMode);
         CpuValue.Text = $"{Math.Round(metrics.CpuTotalPercent):0}%";
+        UpdateCpuSensors(metrics);
         RamSparkline.Values = metrics.RamHistoryPercents;
         RamValue.Text = FormatRamValue(metrics, _settings.RamDisplayMode);
+    }
+
+    private void UpdateCpuSensors(MetricsSnapshot metrics)
+    {
+        var hasTemp = metrics.CpuTemperatureCelsius is not null;
+        var hasFreq = metrics.CpuFrequencyGhz is not null;
+        var nextVisibility = hasTemp || hasFreq ? Visibility.Visible : Visibility.Collapsed;
+        if (CpuSensorPanel.Visibility != nextVisibility)
+        {
+            CpuSensorPanel.Visibility = nextVisibility;
+            UpdateLayout();
+            Dock();
+        }
+
+        if (metrics.CpuTemperatureCelsius is { } tempC)
+        {
+            CpuTempValue.Text = $"{Math.Round(tempC):0}°C";
+            CpuTempValue.Foreground = tempC >= _settings.AutoQuietThresholdCelsius
+                ? (Brush)FindResource("CpuCoralBrush")
+                : (Brush)FindResource("TextPrimaryBrush");
+        }
+        else
+        {
+            CpuTempValue.Text = string.Empty;
+        }
+
+        CpuFreqValue.Text = metrics.CpuFrequencyGhz is { } freqGhz
+            ? $"{freqGhz:0.00}G"
+            : string.Empty;
     }
 
     public void UpdateKeepAwake(KeepAwakeService service)

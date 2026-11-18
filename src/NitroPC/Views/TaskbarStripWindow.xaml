@@ -54,6 +54,27 @@
                                TextAlignment="Right"
                                Foreground="{StaticResource TextPrimaryBrush}"/>
                 </StackPanel>
+                <StackPanel x:Name="CpuSensorPanel"
+                            Margin="7,0,0,0"
+                            Width="46"
+                            VerticalAlignment="Bottom">
+                    <TextBlock x:Name="CpuTempValue"
+                               Text="—°C"
+                               FontFamily="{StaticResource NitroFont}"
+                               FontSize="9.5"
+                               FontWeight="Bold"
+                               Typography.NumeralAlignment="Tabular"
+                               TextAlignment="Right"
+                               Foreground="{StaticResource TextPrimaryBrush}"/>
+                    <TextBlock x:Name="CpuFreqValue"
+                               Text="— GHz"
+                               FontFamily="{StaticResource NitroFont}"
+                               FontSize="10.5"
+                               FontWeight="SemiBold"
+                               Typography.NumeralAlignment="Tabular"
+                               TextAlignment="Right"
+                               Foreground="{StaticResource TextMutedBrush}"/>
+                </StackPanel>
             </StackPanel>
 
             <Border Width="1"

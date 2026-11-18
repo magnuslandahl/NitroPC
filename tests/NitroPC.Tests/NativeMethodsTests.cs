@@ -22,4 +22,10 @@ public sealed class NativeMethodsTests
     {
         Assert.Equal(64, Marshal.SizeOf<NativeMethods.MEMORYSTATUSEX>());
     }
+
+    [Fact]
+    public void PdhFormattedCounterValueHasExpectedLayout()
+    {
+        Assert.Equal(16, Marshal.SizeOf<NativeMethods.PDH_FMT_COUNTERVALUE>());
+    }
 }

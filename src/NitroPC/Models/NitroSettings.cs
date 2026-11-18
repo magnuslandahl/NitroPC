@@ -20,6 +20,13 @@ public enum KeepAwakeBarMode
     Hidden
 }
 
+public enum QuietModeLevel
+{
+    Off,
+    Auto,
+    Quiet
+}
+
 public sealed record QuietModeRecoveryState(
     Guid SchemeId,
     uint AcProcessorBoostMode,
@@ -39,6 +46,10 @@ public sealed class NitroSettings
     public KeepAwakeBarMode KeepAwakeBarMode { get; set; } = KeepAwakeBarMode.Badge;
 
     public bool AutomaticallyCheckForUpdates { get; set; } = true;
+
+    public QuietModeLevel QuietMode { get; set; } = QuietModeLevel.Off;
+
+    public int AutoQuietThresholdCelsius { get; set; } = 75;
 
     public QuietModeRecoveryState? QuietModeRecoveryState { get; set; }
 }

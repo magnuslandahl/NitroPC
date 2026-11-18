@@ -50,7 +50,8 @@ public partial class App : WpfApplication
         _keepAwakeService = new KeepAwakeService();
         _quietModeService = new QuietModeService(
             _settings.QuietModeRecoveryState,
-            PersistQuietModeRecoveryState);
+            PersistQuietModeRecoveryState,
+            _settings.AutoQuietThresholdCelsius);
         _updateService = new UpdateService();
         _stripWindow = new TaskbarStripWindow(_settings);
         _flyoutWindow = new ToolboxFlyoutWindow(_settings);
@@ -58,6 +59,11 @@ public partial class App : WpfApplication
 
         WireEvents();
         RecoverQuietMode();
+        if (_settings.QuietMode != QuietModeLevel.Off)
+        {
+            SetQuietMode(_settings.QuietMode);
+        }
+
         _stripWindow.ApplySettings(_settings);
         _stripWindow.Show();
         RefreshKeepAwakeState();
@@ -109,7 +115,8 @@ public partial class App : WpfApplication
         _flyoutWindow!.SettingsChanged += OnSettingsChanged;
         _flyoutWindow.KeepAwakeStartRequested += StartKeepAwake;
         _flyoutWindow.KeepAwakeStopRequested += StopKeepAwake;
-        _flyoutWindow.QuietModeChangedRequested += SetQuietModeEnabled;
+        _flyoutWindow.QuietModeChangedRequested += SetQuietMode;
+        _flyoutWindow.AutoQuietThresholdChangedRequested += SetAutoQuietThreshold;
         _flyoutWindow.StartupChangedRequested += SetStartupEnabled;
         _flyoutWindow.CheckForUpdatesRequested += () => _ = CheckForUpdatesAsync(interactive: true);
         _flyoutWindow.QuitRequested += Shutdown;
@@ -117,7 +124,12 @@ public partial class App : WpfApplication
         _trayIconService!.OpenRequested += () => _flyoutWindow!.ToggleNearStrip(_stripWindow!.PhysicalBounds);
         _trayIconService.StartKeepAwakeRequested += StartKeepAwake;
         _trayIconService.StopKeepAwakeRequested += StopKeepAwake;
-        _trayIconService.QuietModeChangedRequested += SetQuietModeEnabled;
+        _trayIconService.QuietModeChangedRequested += mode =>
+        {
+            _settings!.QuietMode = mode;
+            OnSettingsChanged(_settings);
+            SetQuietMode(mode);
+        };
         _trayIconService.StartupChangedRequested += SetStartupEnabled;
         _trayIconService.CheckForUpdatesRequested += () => _ = CheckForUpdatesAsync(interactive: true);
         _trayIconService.ExitRequested += Shutdown;
@@ -125,6 +137,45 @@ public partial class App : WpfApplication
 
     private void OnMetricsUpdated(MetricsSnapshot snapshot)
     {
+        if (_quietModeService is { Mode: QuietModeLevel.Auto })
+        {
+            try
+            {
+                _quietModeService.EvaluateMetrics(
+                    snapshot.CpuTemperatureCelsius,
+                    snapshot.CpuTotalPercent);
+            }
+            catch (Win32Exception exception)
+            {
+                _quietModeService.Disable();
+                RefreshQuietModeState();
+                ReportError("Auto Quiet Mode could not update the Windows processor boost policy.", exception);
+            }
+            catch (InvalidOperationException exception)
+            {
+                _quietModeService.Disable();
+                RefreshQuietModeState();
+                ReportError("Auto Quiet Mode is not available in the current power state.", exception);
+            }
+            catch (IOException exception)
+            {
+                _quietModeService.Disable();
+                RefreshQuietModeState();
+                ReportError("NitroPC could not save the Auto Quiet Mode recovery state.", exception);
+            }
+            catch (UnauthorizedAccessException exception)
+            {
+                _quietModeService.Disable();
+                RefreshQuietModeState();
+                ReportError("NitroPC does not have permission to save the Auto Quiet Mode state.", exception);
+            }
+            catch (AggregateException exception)
+            {
+                RefreshQuietModeState();
+                ReportError("Auto Quiet Mode could not restore the Windows processor boost policy.", exception);
+            }
+        }
+
         _stripWindow?.UpdateMetrics(snapshot);
         _flyoutWindow?.UpdateMetrics(snapshot);
     }
@@ -182,27 +233,66 @@ public partial class App : WpfApplication
         }
     }
 
-    private void SetQuietModeEnabled(bool enabled)
+    private void SetQuietMode(QuietModeLevel mode)
     {
         try
         {
-            _quietModeService!.Toggle(enabled);
+            _quietModeService!.SetMode(mode);
             RefreshQuietModeState();
         }
         catch (Win32Exception exception)
         {
+            _settings!.QuietMode = _quietModeService!.Mode;
             RefreshQuietModeState();
             ReportError("NitroPC could not change the Windows processor boost policy.", exception);
         }
         catch (InvalidOperationException exception)
         {
+            _settings!.QuietMode = _quietModeService!.Mode;
             RefreshQuietModeState();
             ReportError("Quiet Mode is not available in the current power state.", exception);
         }
         catch (IOException exception)
         {
+            _settings!.QuietMode = _quietModeService!.Mode;
             RefreshQuietModeState();
             ReportError("NitroPC could not persist the Quiet Mode recovery state.", exception);
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            _settings!.QuietMode = _quietModeService!.Mode;
+            RefreshQuietModeState();
+            ReportError("NitroPC does not have permission to save the Quiet Mode state.", exception);
+        }
+        catch (AggregateException exception)
+        {
+            _settings!.QuietMode = _quietModeService!.Mode;
+            RefreshQuietModeState();
+            ReportError("Quiet Mode could not restore the Windows processor boost policy.", exception);
+        }
+    }
+
+    private void SetAutoQuietThreshold(int thresholdCelsius)
+    {
+        try
+        {
+            _quietModeService!.SetAutoThreshold(thresholdCelsius);
+            RefreshQuietModeState();
+        }
+        catch (Win32Exception exception)
+        {
+            RefreshQuietModeState();
+            ReportError("NitroPC could not apply the Auto Quiet threshold.", exception);
+        }
+        catch (InvalidOperationException exception)
+        {
+            RefreshQuietModeState();
+            ReportError("Auto Quiet Mode is not available in the current power state.", exception);
+        }
+        catch (IOException exception)
+        {
+            RefreshQuietModeState();
+            ReportError("NitroPC could not save the Quiet Mode recovery state.", exception);
         }
         catch (UnauthorizedAccessException exception)
         {
@@ -212,15 +302,22 @@ public partial class App : WpfApplication
         catch (AggregateException exception)
         {
             RefreshQuietModeState();
-            ReportError("Quiet Mode could not restore the Windows processor boost policy.", exception);
+            ReportError("Auto Quiet Mode could not restore the Windows processor boost policy.", exception);
         }
     }
 
     private void RefreshQuietModeState()
     {
-        var enabled = _quietModeService?.IsActive == true;
-        _flyoutWindow?.SetQuietModeEnabled(enabled);
-        _trayIconService?.SetQuietModeEnabled(enabled);
+        if (_quietModeService is null)
+        {
+            return;
+        }
+
+        _flyoutWindow?.UpdateQuietMode(
+            _quietModeService.Mode,
+            _quietModeService.IsBoostDisabled,
+            _quietModeService.AutoThresholdCelsius);
+        _trayIconService?.SetQuietMode(_quietModeService.Mode);
     }
 
     private void RecoverQuietMode()

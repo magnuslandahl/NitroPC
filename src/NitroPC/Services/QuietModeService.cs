@@ -102,32 +102,63 @@ internal sealed class WindowsQuietModePlatform : IQuietModePlatform
 
 public sealed class QuietModeService : IDisposable
 {
+    public static readonly TimeSpan AutoMinimumHoldDuration = TimeSpan.FromSeconds(15);
+    public const int HysteresisBandCelsius = 10;
+
     private readonly IQuietModePlatform _platform;
     private readonly Action<QuietModeRecoveryState?> _persistRecoveryState;
+    private readonly Func<DateTime> _utcNow;
     private QuietModeRecoveryState? _activeState;
     private QuietModeRecoveryState? _pendingRecovery;
+    private QuietModeLevel _mode = QuietModeLevel.Off;
+    private int _autoThresholdCelsius = 75;
+    private DateTime _lastAutoTransitionUtc = DateTime.MinValue;
+    private double? _latestTemperatureCelsius;
+    private double _latestCpuPercent;
+    private int _highLoadStreak;
     private bool _disposed;
 
     public QuietModeService(
         QuietModeRecoveryState? pendingRecovery,
-        Action<QuietModeRecoveryState?> persistRecoveryState)
-        : this(new WindowsQuietModePlatform(), pendingRecovery, persistRecoveryState)
+        Action<QuietModeRecoveryState?> persistRecoveryState,
+        int autoThresholdCelsius = 75)
+        : this(
+            new WindowsQuietModePlatform(),
+            pendingRecovery,
+            persistRecoveryState,
+            () => DateTime.UtcNow,
+            autoThresholdCelsius)
     {
     }
 
     internal QuietModeService(
         IQuietModePlatform platform,
         QuietModeRecoveryState? pendingRecovery,
-        Action<QuietModeRecoveryState?> persistRecoveryState)
+        Action<QuietModeRecoveryState?> persistRecoveryState,
+        Func<DateTime>? utcNow = null,
+        int autoThresholdCelsius = 75)
     {
         _platform = platform;
         _pendingRecovery = pendingRecovery;
         _persistRecoveryState = persistRecoveryState;
+        _utcNow = utcNow ?? (() => DateTime.UtcNow);
+        _autoThresholdCelsius = NormalizeThreshold(autoThresholdCelsius);
     }
+
+    public QuietModeLevel Mode => _mode;
 
     public bool IsActive => _activeState is not null;
 
+    public bool IsBoostDisabled => _activeState is not null;
+
+    public int AutoThresholdCelsius => _autoThresholdCelsius;
+
+    public int AutoResumeCelsius => _autoThresholdCelsius - HysteresisBandCelsius;
+
     public event Action? StateChanged;
+
+    public static int NormalizeThreshold(int thresholdCelsius) =>
+        Math.Clamp(thresholdCelsius, 60, 95);
 
     public void RecoverInterruptedSession()
     {
@@ -142,9 +173,140 @@ public sealed class QuietModeService : IDisposable
         _pendingRecovery = null;
     }
 
-    public void Enable()
+    public void SetMode(QuietModeLevel mode)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        if (_mode == mode && (mode != QuietModeLevel.Quiet || _activeState is not null))
+        {
+            return;
+        }
+
+        _highLoadStreak = 0;
+
+        switch (mode)
+        {
+            case QuietModeLevel.Off:
+                _mode = QuietModeLevel.Off;
+                RestoreBoostCore(notify: false);
+                StateChanged?.Invoke();
+                break;
+
+            case QuietModeLevel.Quiet:
+                DisableBoostCore(notify: false);
+                _mode = QuietModeLevel.Quiet;
+                StateChanged?.Invoke();
+                break;
+
+            case QuietModeLevel.Auto:
+                var shouldHoldBoostOff = _latestTemperatureCelsius is { } temp
+                    && temp >= _autoThresholdCelsius;
+                if (!shouldHoldBoostOff && _activeState is not null)
+                {
+                    RestoreBoostCore(notify: false);
+                }
+
+                _mode = QuietModeLevel.Auto;
+                _lastAutoTransitionUtc = DateTime.MinValue;
+                if (shouldHoldBoostOff && _activeState is null)
+                {
+                    DisableBoostCore(notify: false);
+                    _lastAutoTransitionUtc = _utcNow();
+                }
+
+                StateChanged?.Invoke();
+                break;
+        }
+    }
+
+    public void SetAutoThreshold(int thresholdCelsius)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        var normalized = NormalizeThreshold(thresholdCelsius);
+        if (_autoThresholdCelsius == normalized)
+        {
+            return;
+        }
+
+        _autoThresholdCelsius = normalized;
+        if (_mode == QuietModeLevel.Auto)
+        {
+            EvaluateMetrics(_latestTemperatureCelsius, _latestCpuPercent, ignoreHoldTimer: true);
+        }
+
+        StateChanged?.Invoke();
+    }
+
+    public void EvaluateMetrics(double? temperatureCelsius, double cpuTotalPercent)
+    {
+        EvaluateMetrics(temperatureCelsius, cpuTotalPercent, ignoreHoldTimer: false);
+    }
+
+    private void EvaluateMetrics(
+        double? temperatureCelsius,
+        double cpuTotalPercent,
+        bool ignoreHoldTimer)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _latestTemperatureCelsius = temperatureCelsius;
+        _latestCpuPercent = cpuTotalPercent;
+
+        if (_mode != QuietModeLevel.Auto)
+        {
+            return;
+        }
+
+        var now = _utcNow();
+        var holdSatisfied = ignoreHoldTimer ||
+            _lastAutoTransitionUtc == DateTime.MinValue ||
+            now - _lastAutoTransitionUtc >= AutoMinimumHoldDuration;
+
+        if (temperatureCelsius is { } tempC)
+        {
+            _highLoadStreak = 0;
+            if (_activeState is null)
+            {
+                if (tempC >= _autoThresholdCelsius && holdSatisfied)
+                {
+                    DisableBoostCore(notify: true);
+                    _lastAutoTransitionUtc = now;
+                }
+            }
+            else if (tempC <= AutoResumeCelsius && holdSatisfied)
+            {
+                RestoreBoostCore(notify: true);
+                _lastAutoTransitionUtc = now;
+            }
+
+            return;
+        }
+
+        if (_activeState is null)
+        {
+            _highLoadStreak = cpuTotalPercent >= 80.0 ? _highLoadStreak + 1 : 0;
+            if (_highLoadStreak >= 3 && holdSatisfied)
+            {
+                _highLoadStreak = 0;
+                DisableBoostCore(notify: true);
+                _lastAutoTransitionUtc = now;
+            }
+        }
+        else if (cpuTotalPercent <= 35.0 && holdSatisfied)
+        {
+            _highLoadStreak = 0;
+            RestoreBoostCore(notify: true);
+            _lastAutoTransitionUtc = now;
+        }
+    }
+
+    public void Enable() => SetMode(QuietModeLevel.Quiet);
+
+    public void Disable() => SetMode(QuietModeLevel.Off);
+
+    public void Toggle(bool enabled) =>
+        SetMode(enabled ? QuietModeLevel.Quiet : QuietModeLevel.Off);
+
+    private void DisableBoostCore(bool notify)
+    {
         if (_activeState is not null)
         {
             return;
@@ -191,12 +353,14 @@ public sealed class QuietModeService : IDisposable
         }
 
         _activeState = originalState;
-        StateChanged?.Invoke();
+        if (notify)
+        {
+            StateChanged?.Invoke();
+        }
     }
 
-    public void Disable()
+    private void RestoreBoostCore(bool notify)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
         if (_activeState is not { } state)
         {
             return;
@@ -204,20 +368,12 @@ public sealed class QuietModeService : IDisposable
 
         _platform.ApplyBoostState(state);
         _activeState = null;
-        StateChanged?.Invoke();
-        _persistRecoveryState(null);
-    }
+        if (notify)
+        {
+            StateChanged?.Invoke();
+        }
 
-    public void Toggle(bool enabled)
-    {
-        if (enabled)
-        {
-            Enable();
-        }
-        else
-        {
-            Disable();
-        }
+        _persistRecoveryState(null);
     }
 
     public void Dispose()
@@ -229,7 +385,8 @@ public sealed class QuietModeService : IDisposable
 
         try
         {
-            Disable();
+            RestoreBoostCore(notify: false);
+            _mode = QuietModeLevel.Off;
         }
         finally
         {

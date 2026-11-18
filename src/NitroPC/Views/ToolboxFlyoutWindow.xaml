@@ -175,9 +175,17 @@
                                            Typography.NumeralAlignment="Tabular"
                                            Foreground="{StaticResource CpuCoralBrush}"/>
                             </Grid>
+                            <TextBlock x:Name="CpuSensorsText"
+                                       Margin="0,2,0,0"
+                                       Text="— GHz · —°C"
+                                       FontFamily="{StaticResource NitroFont}"
+                                       FontSize="11.5"
+                                       FontWeight="SemiBold"
+                                       Typography.NumeralAlignment="Tabular"
+                                       Foreground="{StaticResource TextPrimaryBrush}"/>
                             <controls:CpuBarsControl x:Name="CpuLargeBars"
-                                                      Height="28"
-                                                      Margin="0,7,0,0"
+                                                      Height="26"
+                                                      Margin="0,6,0,0"
                                                       MaxBars="30"
                                                       BarBrush="{StaticResource CpuCoralBrush}"
                                                       LatestBarBrush="{StaticResource CpuLatestBrush}"/>
@@ -185,7 +193,7 @@
                                        Margin="0,6,0,0"
                                        Text="60-second history"
                                        FontFamily="{StaticResource NitroFont}"
-                                       FontSize="10.5"
+                                       FontSize="10"
                                        Foreground="{StaticResource TextMutedBrush}"/>
                         </StackPanel>
                     </Border>
@@ -212,9 +220,17 @@
                                            Typography.NumeralAlignment="Tabular"
                                            Foreground="{StaticResource RamBlueBrush}"/>
                             </Grid>
+                            <TextBlock x:Name="RamUsageText"
+                                       Margin="0,2,0,0"
+                                       Text="0.0 / 0.0 GB"
+                                       FontFamily="{StaticResource NitroFont}"
+                                       FontSize="11.5"
+                                       FontWeight="SemiBold"
+                                       Typography.NumeralAlignment="Tabular"
+                                       Foreground="{StaticResource TextPrimaryBrush}"/>
                             <controls:RamSparklineControl x:Name="RamLargeSparkline"
-                                                           Height="28"
-                                                           Margin="0,7,0,0"
+                                                           Height="26"
+                                                           Margin="0,6,0,0"
                                                            MaxSamples="30"
                                                            StrokeBrush="{StaticResource RamBlueBrush}"
                                                            FillBrush="{StaticResource RamFillBrush}"
@@ -222,18 +238,48 @@
                                                            LatestPointBrush="{StaticResource RamLatestBrush}"/>
                             <TextBlock x:Name="RamDetailText"
                                        Margin="0,6,0,0"
-                                       Text="0.0 / 0.0 GB · 60s"
+                                       Text="60-second history"
                                        FontFamily="{StaticResource NitroFont}"
-                                       FontSize="10.5"
+                                       FontSize="10"
                                        Typography.NumeralAlignment="Tabular"
                                        Foreground="{StaticResource TextMutedBrush}"/>
                         </StackPanel>
                     </Border>
                 </Grid>
 
+                <Border Margin="0,10,0,0"
+                        Padding="12,9"
+                        Background="{StaticResource CardBackgroundBrush}"
+                        BorderBrush="{StaticResource CardBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="10">
+                    <StackPanel>
+                        <Grid>
+                            <TextBlock Text="TOP CPU PROCESSES"
+                                       FontFamily="{StaticResource NitroFont}"
+                                       FontSize="10"
+                                       FontWeight="Bold"
+                                       Foreground="{StaticResource TextMutedBrush}"/>
+                            <TextBlock Text="CPU"
+                                       HorizontalAlignment="Right"
+                                       FontFamily="{StaticResource NitroFont}"
+                                       FontSize="10"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextMutedBrush}"/>
+                        </Grid>
+                        <TextBlock x:Name="TopProcessesEmptyText"
+                                   Margin="0,6,0,2"
+                                   Text="Sampling active processes…"
+                                   FontFamily="{StaticResource NitroFont}"
+                                   FontSize="10.5"
+                                   Foreground="{StaticResource TextMutedBrush}"/>
+                        <StackPanel x:Name="TopProcessesPanel" Margin="0,5,0,0" Visibility="Collapsed"/>
+                    </StackPanel>
+                </Border>
+
                 <Border x:Name="KeepAwakeCard"
-                        Margin="0,12,0,0"
-                        Padding="12"
+                        Margin="0,10,0,0"
+                        Padding="12,10"
                         Background="{StaticResource CardBackgroundBrush}"
                         BorderBrush="{StaticResource CardBorderBrush}"
                         BorderThickness="1"
@@ -300,18 +346,18 @@
                 </Border>
 
                 <Border x:Name="QuietModeCard"
-                        Margin="0,12,0,0"
-                        Padding="12"
+                        Margin="0,10,0,0"
+                        Padding="12,10"
                         Background="{StaticResource CardBackgroundBrush}"
                         BorderBrush="{StaticResource CardBorderBrush}"
                         BorderThickness="1"
                         CornerRadius="10">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel>
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <Viewbox Width="15" Height="15" Margin="0,0,6,0" VerticalAlignment="Center">
                                     <Canvas Width="24" Height="24">
@@ -330,25 +376,19 @@
                                            FontWeight="SemiBold"
                                            Foreground="{StaticResource TextPrimaryBrush}"/>
                             </StackPanel>
-                            <TextBlock x:Name="QuietModeDetailText"
-                                       Margin="0,3,0,0"
-                                       Text="Disables CPU boost to reduce heat &amp; fan noise"
-                                       FontFamily="{StaticResource NitroFont}"
-                                       FontSize="10.5"
-                                       Foreground="{StaticResource TextMutedBrush}"/>
-                            <TextBlock Margin="0,2,0,0"
-                                       Text="Restored automatically when NitroPC exits."
-                                       FontFamily="{StaticResource NitroFont}"
-                                       FontSize="9.5"
-                                       Foreground="{StaticResource TextMutedBrush}"/>
-                        </StackPanel>
-                        <ToggleButton x:Name="QuietModeToggle"
-                                      Grid.Column="1"
-                                      VerticalAlignment="Center"
-                                      Style="{StaticResource NitroToggle}"
-                                      Checked="OnQuietModeChanged"
-                                      Unchecked="OnQuietModeChanged"/>
-                    </Grid>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button x:Name="QuietOffButton" Content="Off" Tag="Off" Style="{StaticResource NitroChip}" Click="OnQuietModeClicked"/>
+                                <Button x:Name="QuietAutoButton" Margin="4,0,0,0" Content="Auto" Tag="Auto" ToolTip="Disables CPU boost automatically when hot, then restores it once cooled" Style="{StaticResource NitroChip}" Click="OnQuietModeClicked"/>
+                                <Button x:Name="QuietAlwaysButton" Margin="4,0,0,0" Content="Quiet" Tag="Quiet" ToolTip="Always disables CPU turbo boost while active" Style="{StaticResource NitroChip}" Click="OnQuietModeClicked"/>
+                            </StackPanel>
+                        </Grid>
+                        <TextBlock x:Name="QuietModeDetailText"
+                                   Margin="0,5,0,0"
+                                   Text="Normal CPU boost — full peak clock speed"
+                                   FontFamily="{StaticResource NitroFont}"
+                                   FontSize="10.5"
+                                   Foreground="{StaticResource TextMutedBrush}"/>
+                    </StackPanel>
                 </Border>
             </StackPanel>
 
@@ -416,6 +456,24 @@
                                 <Button x:Name="BarBadgeButton" Content="Badge" Tag="Badge" Style="{StaticResource NitroChip}" Click="OnBarModeClicked"/>
                                 <Button x:Name="BarIconButton" Margin="4,0,0,0" Content="Icon" Tag="CompactIcon" Style="{StaticResource NitroChip}" Click="OnBarModeClicked"/>
                                 <Button x:Name="BarHiddenButton" Margin="4,0,0,0" Content="Hide" Tag="Hidden" Style="{StaticResource NitroChip}" Click="OnBarModeClicked"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Auto Quiet limit"
+                                       VerticalAlignment="Center"
+                                       FontFamily="{StaticResource NitroFont}"
+                                       FontSize="11.5"
+                                       Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                <Button x:Name="AutoTemp70Button" Content="70°C" Tag="70" Style="{StaticResource NitroChip}" Click="OnAutoThresholdClicked"/>
+                                <Button x:Name="AutoTemp75Button" Margin="4,0,0,0" Content="75°C" Tag="75" Style="{StaticResource NitroChip}" Click="OnAutoThresholdClicked"/>
+                                <Button x:Name="AutoTemp80Button" Margin="4,0,0,0" Content="80°C" Tag="80" Style="{StaticResource NitroChip}" Click="OnAutoThresholdClicked"/>
                             </StackPanel>
                         </Grid>
                     </StackPanel>

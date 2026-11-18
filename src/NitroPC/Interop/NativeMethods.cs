@@ -4,7 +4,17 @@ namespace NitroPC.Interop;
 
 internal static class NativeMethods
 {
+    public const int SystemProcessInformation = 5;
     public const int SystemProcessorPerformanceInformation = 8;
+    public const int StatusInfoLengthMismatch = unchecked((int)0xC0000004);
+    public const uint PdhFormatDouble = 0x00000200;
+
+    [StructLayout(LayoutKind.Explicit, Size = 16)]
+    public struct PDH_FMT_COUNTERVALUE
+    {
+        [FieldOffset(0)] public uint CStatus;
+        [FieldOffset(8)] public double doubleValue;
+    }
 
     [StructLayout(LayoutKind.Sequential)]
     public struct SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION
@@ -24,6 +34,47 @@ internal static class NativeMethods
         [Out] SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION[] systemInformation,
         int systemInformationLength,
         out int returnLength);
+
+    [DllImport("ntdll.dll")]
+    public static extern int NtQuerySystemInformation(
+        int systemInformationClass,
+        IntPtr systemInformation,
+        int systemInformationLength,
+        out int returnLength);
+
+    [DllImport("pdh.dll", EntryPoint = "PdhOpenQueryW", CharSet = CharSet.Unicode)]
+    public static extern uint PdhOpenQuery(
+        IntPtr szDataSource,
+        IntPtr dwUserData,
+        out IntPtr phQuery);
+
+    [DllImport("pdh.dll", EntryPoint = "PdhAddEnglishCounterW", CharSet = CharSet.Unicode)]
+    public static extern uint PdhAddEnglishCounter(
+        IntPtr hQuery,
+        string szFullCounterPath,
+        IntPtr dwUserData,
+        out IntPtr phCounter);
+
+    [DllImport("pdh.dll", EntryPoint = "PdhExpandWildCardPathW", CharSet = CharSet.Unicode)]
+    public static extern uint PdhExpandWildCardPath(
+        IntPtr szDataSource,
+        string szWildCardPath,
+        [Out] char[]? mszExpandedPathList,
+        ref uint pcchPathListLength,
+        uint dwFlags);
+
+    [DllImport("pdh.dll")]
+    public static extern uint PdhCollectQueryData(IntPtr hQuery);
+
+    [DllImport("pdh.dll")]
+    public static extern uint PdhGetFormattedCounterValue(
+        IntPtr hCounter,
+        uint dwFormat,
+        IntPtr lpdwType,
+        out PDH_FMT_COUNTERVALUE pValue);
+
+    [DllImport("pdh.dll")]
+    public static extern uint PdhCloseQuery(IntPtr hQuery);
 
     [StructLayout(LayoutKind.Sequential)]
     public struct MEMORYSTATUSEX

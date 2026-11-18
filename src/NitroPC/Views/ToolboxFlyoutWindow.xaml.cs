@@ -17,21 +17,36 @@ namespace NitroPC.Views;
 
 public sealed partial class ToolboxFlyoutWindow : Window
 {
+    private sealed record ProcessRowElements(
+        Grid Row,
+        TextBlock NameText,
+        TextBlock CountText,
+        Border BarFill,
+        TextBlock PercentText);
+
     private static readonly int[] SupportedPresets = [60, 120, 240, 480, 0];
+    private static readonly int[] SupportedThresholds = [70, 75, 80];
     private readonly NitroSettings _settings;
+    private readonly List<ProcessRowElements> _processRows = new(5);
     private MetricsSnapshot? _latestMetrics;
     private NativeMethods.RECT? _lastStripPhysicalRect;
+    private QuietModeLevel _quietModeLevel;
+    private bool _isBoostDisabled;
     private bool _isAwake;
 
     public ToolboxFlyoutWindow(NitroSettings settings)
     {
         _settings = settings;
         _settings.KeepAwakeMinutes = NormalizePresetMinutes(settings.KeepAwakeMinutes);
+        _settings.AutoQuietThresholdCelsius = NormalizeAutoThreshold(settings.AutoQuietThresholdCelsius);
+        _quietModeLevel = settings.QuietMode;
         InitializeComponent();
+        InitializeProcessRows();
         StartupToggle.IsChecked = new StartupService().IsEnabled();
         AutomaticUpdatesToggle.IsChecked = settings.AutomaticallyCheckForUpdates;
         PreviewKeyDown += OnPreviewKeyDown;
         ApplySelectionStyles();
+        RefreshQuietModeSummary();
     }
 
     public DateTime LastDeactivatedUtc { get; private set; } = DateTime.MinValue;
@@ -42,7 +57,9 @@ public sealed partial class ToolboxFlyoutWindow : Window
 
     public event Action? KeepAwakeStopRequested;
 
-    public event Action<bool>? QuietModeChangedRequested;
+    public event Action<QuietModeLevel>? QuietModeChangedRequested;
+
+    public event Action<int>? AutoQuietThresholdChangedRequested;
 
     public event Action<bool>? StartupChangedRequested;
 
@@ -52,12 +69,34 @@ public sealed partial class ToolboxFlyoutWindow : Window
 
     public void UpdateMetrics(MetricsSnapshot metrics)
     {
+        var previousProcessCount = TopProcessesPanel.Visibility == Visibility.Visible
+            ? _processRows.Count(row => row.Row.Visibility == Visibility.Visible)
+            : 0;
+
         _latestMetrics = metrics;
         CpuLargeValue.Text = $"{Math.Round(metrics.CpuTotalPercent):0}%";
+        CpuSensorsText.Text = FormatCpuSensors(metrics);
+        CpuSensorsText.Foreground = metrics.CpuTemperatureCelsius is { } tempC &&
+            tempC >= _settings.AutoQuietThresholdCelsius
+            ? (Brush)FindResource("CpuCoralBrush")
+            : (Brush)FindResource("TextPrimaryBrush");
         ApplyCpuDisplay(metrics);
         RamLargeValue.Text = $"{Math.Round(metrics.RamPercent):0}%";
+        RamUsageText.Text = $"{metrics.RamUsedGb:0.0} / {metrics.RamTotalGb:0.0} GB";
         RamLargeSparkline.Values = metrics.RamHistoryPercents;
-        RamDetailText.Text = $"{metrics.RamUsedGb:0.0} / {metrics.RamTotalGb:0.0} GB · 60s";
+        UpdateTopProcesses(metrics.TopProcesses);
+        RefreshQuietModeSummary();
+
+        var newProcessCount = TopProcessesPanel.Visibility == Visibility.Visible
+            ? _processRows.Count(row => row.Row.Visibility == Visibility.Visible)
+            : 0;
+        if (IsVisible && newProcessCount != previousProcessCount && _lastStripPhysicalRect is { } stripRect)
+        {
+            SizeToContent = SizeToContent.Height;
+            InvalidateMeasure();
+            UpdateLayout();
+            PositionNearStrip(stripRect);
+        }
     }
 
     private void ApplyCpuDisplay(MetricsSnapshot metrics)
@@ -131,19 +170,39 @@ public sealed partial class ToolboxFlyoutWindow : Window
         StartupToggle.IsChecked = enabled;
     }
 
-    public void SetQuietModeEnabled(bool enabled)
+    public void UpdateQuietMode(QuietModeLevel mode, bool boostDisabled, int thresholdCelsius)
     {
-        if (QuietModeToggle.IsChecked != enabled)
-        {
-            QuietModeToggle.IsChecked = enabled;
-        }
+        _quietModeLevel = mode;
+        _isBoostDisabled = boostDisabled;
+        _settings.QuietMode = mode;
+        _settings.AutoQuietThresholdCelsius = NormalizeAutoThreshold(thresholdCelsius);
+        ApplySelectionStyles();
+        RefreshQuietModeSummary();
+    }
 
-        QuietModeDetailText.Text = enabled
-            ? "CPU boost off — cooler & quieter"
-            : "Disables CPU boost to reduce heat & fan noise";
-        QuietModeCard.BorderBrush = enabled
+    private void RefreshQuietModeSummary()
+    {
+        var threshold = _settings.AutoQuietThresholdCelsius;
+        var resume = threshold - QuietModeService.HysteresisBandCelsius;
+        var tempLabel = _latestMetrics?.CpuTemperatureCelsius is { } tempC
+            ? $" · {Math.Round(tempC):0}°C"
+            : string.Empty;
+
+        QuietModeDetailText.Text = _quietModeLevel switch
+        {
+            QuietModeLevel.Quiet => $"Always quiet — CPU turbo boost disabled{tempLabel}",
+            QuietModeLevel.Auto when _isBoostDisabled =>
+                $"Auto — boost paused{tempLabel} (resumes ≤ {resume}°C)",
+            QuietModeLevel.Auto =>
+                $"Auto (< {threshold}°C) — boost active{tempLabel}",
+            _ => "Normal CPU boost — full peak clock speed"
+        };
+
+        QuietModeCard.BorderBrush = _isBoostDisabled
             ? (Brush)FindResource("RamBlueBrush")
-            : (Brush)FindResource("CardBorderBrush");
+            : _quietModeLevel == QuietModeLevel.Auto
+                ? (Brush)FindResource("DividerBrush")
+                : (Brush)FindResource("CardBorderBrush");
     }
 
     public void SetUpdateStatus(string text)
@@ -319,9 +378,22 @@ public sealed partial class ToolboxFlyoutWindow : Window
         StartupChangedRequested?.Invoke(StartupToggle.IsChecked == true);
     }
 
-    private void OnQuietModeChanged(object sender, RoutedEventArgs e)
+    private void OnQuietModeClicked(object sender, RoutedEventArgs e)
     {
-        QuietModeChangedRequested?.Invoke(QuietModeToggle.IsChecked == true);
+        var mode = Enum.Parse<QuietModeLevel>((string)((Button)sender).Tag);
+        _settings.QuietMode = mode;
+        SettingsChanged?.Invoke(_settings);
+        QuietModeChangedRequested?.Invoke(mode);
+    }
+
+    private void OnAutoThresholdClicked(object sender, RoutedEventArgs e)
+    {
+        var threshold = int.Parse((string)((Button)sender).Tag, CultureInfo.InvariantCulture);
+        _settings.AutoQuietThresholdCelsius = NormalizeAutoThreshold(threshold);
+        SettingsChanged?.Invoke(_settings);
+        AutoQuietThresholdChangedRequested?.Invoke(_settings.AutoQuietThresholdCelsius);
+        ApplySelectionStyles();
+        RefreshQuietModeSummary();
     }
 
     private void OnAutomaticUpdatesChanged(object sender, RoutedEventArgs e)
@@ -350,6 +422,14 @@ public sealed partial class ToolboxFlyoutWindow : Window
         SetSelected(BarBadgeButton, _settings.KeepAwakeBarMode == KeepAwakeBarMode.Badge);
         SetSelected(BarIconButton, _settings.KeepAwakeBarMode == KeepAwakeBarMode.CompactIcon);
         SetSelected(BarHiddenButton, _settings.KeepAwakeBarMode == KeepAwakeBarMode.Hidden);
+        SetSelected(QuietOffButton, _quietModeLevel == QuietModeLevel.Off);
+        SetSelected(QuietAutoButton, _quietModeLevel == QuietModeLevel.Auto);
+        SetSelected(QuietAlwaysButton, _quietModeLevel == QuietModeLevel.Quiet);
+
+        var threshold = NormalizeAutoThreshold(_settings.AutoQuietThresholdCelsius);
+        SetSelected(AutoTemp70Button, threshold == 70);
+        SetSelected(AutoTemp75Button, threshold == 75);
+        SetSelected(AutoTemp80Button, threshold == 80);
         ApplyPresetStyles();
     }
 
@@ -408,6 +488,139 @@ public sealed partial class ToolboxFlyoutWindow : Window
             .Where(preset => preset > 0)
             .MinBy(preset => Math.Abs(preset - minutes));
     }
+
+    internal static int NormalizeAutoThreshold(int thresholdCelsius) =>
+        SupportedThresholds.MinBy(value => Math.Abs(value - thresholdCelsius));
+
+    private void InitializeProcessRows()
+    {
+        var font = (System.Windows.Media.FontFamily)FindResource("NitroFont");
+        var primaryBrush = (Brush)FindResource("TextPrimaryBrush");
+        var mutedBrush = (Brush)FindResource("TextMutedBrush");
+        var coralBrush = (Brush)FindResource("CpuCoralBrush");
+        var trackBrush = (Brush)new BrushConverter().ConvertFromString("#17FFFFFF")!;
+
+        for (var index = 0; index < 5; index++)
+        {
+            var row = new Grid
+            {
+                Margin = new Thickness(0, index == 0 ? 0 : 4, 0, 0),
+                Visibility = Visibility.Collapsed
+            };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(42) });
+
+            var nameStack = new StackPanel
+            {
+                Orientation = System.Windows.Controls.Orientation.Horizontal,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            var nameText = new TextBlock
+            {
+                FontFamily = font,
+                FontSize = 11,
+                Foreground = primaryBrush,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                MaxWidth = 175,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            var countText = new TextBlock
+            {
+                FontFamily = font,
+                FontSize = 10,
+                Foreground = mutedBrush,
+                Margin = new Thickness(4, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            nameStack.Children.Add(nameText);
+            nameStack.Children.Add(countText);
+
+            var barTrack = new Border
+            {
+                Width = 52,
+                Height = 4,
+                CornerRadius = new CornerRadius(2),
+                Background = trackBrush,
+                Margin = new Thickness(8, 0, 6, 0),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            var barFill = new Border
+            {
+                Width = 0,
+                Height = 4,
+                CornerRadius = new CornerRadius(2),
+                Background = coralBrush,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Left
+            };
+            barTrack.Child = barFill;
+            Grid.SetColumn(barTrack, 1);
+
+            var percentText = new TextBlock
+            {
+                FontFamily = font,
+                FontSize = 11,
+                FontWeight = index == 0 ? FontWeights.SemiBold : FontWeights.Normal,
+                Foreground = index == 0 ? primaryBrush : mutedBrush,
+                TextAlignment = TextAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            System.Windows.Documents.Typography.SetNumeralAlignment(percentText, FontNumeralAlignment.Tabular);
+            Grid.SetColumn(percentText, 2);
+
+            row.Children.Add(nameStack);
+            row.Children.Add(barTrack);
+            row.Children.Add(percentText);
+
+            TopProcessesPanel.Children.Add(row);
+            _processRows.Add(new ProcessRowElements(row, nameText, countText, barFill, percentText));
+        }
+    }
+
+    private void UpdateTopProcesses(IReadOnlyList<ProcessUsageItem> topProcesses)
+    {
+        if (topProcesses.Count == 0)
+        {
+            if (_latestMetrics is { CpuHistoryPercents.Length: > 1 })
+            {
+                TopProcessesEmptyText.Text = "System idle (< 0.1% per process)";
+            }
+
+            TopProcessesEmptyText.Visibility = Visibility.Visible;
+            TopProcessesPanel.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        TopProcessesEmptyText.Visibility = Visibility.Collapsed;
+        TopProcessesPanel.Visibility = Visibility.Visible;
+
+        var scaleMax = Math.Max(10.0, topProcesses[0].CpuPercent);
+        for (var index = 0; index < _processRows.Count; index++)
+        {
+            var elements = _processRows[index];
+            if (index >= topProcesses.Count)
+            {
+                elements.Row.Visibility = Visibility.Collapsed;
+                continue;
+            }
+
+            var item = topProcesses[index];
+            elements.Row.Visibility = Visibility.Visible;
+            elements.NameText.Text = item.Name;
+            elements.CountText.Text = item.InstanceCount > 1 ? $"({item.InstanceCount})" : string.Empty;
+            elements.BarFill.Width = Math.Clamp(item.CpuPercent / scaleMax, 0.06, 1.0) * 52.0;
+            elements.PercentText.Text = $"{item.CpuPercent:0.0}%";
+        }
+    }
+
+    private static string FormatCpuSensors(MetricsSnapshot metrics) =>
+        (metrics.CpuFrequencyGhz, metrics.CpuTemperatureCelsius) switch
+        {
+            ({ } ghz, { } temp) => $"{ghz:0.00} GHz · {Math.Round(temp):0}°C",
+            ({ } ghz, null) => $"{ghz:0.00} GHz",
+            (null, { } temp) => $"{Math.Round(temp):0}°C",
+            _ => "Sensors unavailable"
+        };
 
     private static string FormatCountdown(TimeSpan remaining) =>
         $"{(int)remaining.TotalHours:00}:{remaining.Minutes:00}:{remaining.Seconds:00}";
