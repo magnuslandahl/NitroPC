@@ -1,0 +1,23 @@
+# .NET build outputs
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+out/
+publish/
+TestResults/
+
+# Visual Studio / Rider / VS Code
+.vs/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.DotSettings.user
+
+# OS / temp files
+Thumbs.db
+Desktop.ini
+*.tmp
+*.bak

@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NitroPC — UI & Taskbar Concept Preview</title>
+<style>
+  :root {
+    --bg-canvas: #0d151a;
+    --bar-bg: #233840;
+    --bar-border: rgba(255, 255, 255, 0.10);
+    --flyout-bg: rgba(24, 36, 43, 0.94);
+    --card-bg: rgba(255, 255, 255, 0.05);
+    --card-hover: rgba(255, 255, 255, 0.08);
+    --text-primary: #f3f7f9;
+    --text-muted: #97aeb7;
+    --cpu-coral: #f3a683;
+    --ram-blue: #6ec6ff;
+    --ram-fill: rgba(110, 198, 255, 0.25);
+    --kaffe-amber: #fbbf24;
+    --kaffe-glow: rgba(251, 191, 36, 0.18);
+    --divider: rgba(255, 255, 255, 0.16);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+
+  body {
+    font-family: "Segoe UI Variable Display", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+    background: radial-gradient(circle at 75% 20%, #1d3b47 0%, #0e1920 55%, #091015 100%);
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+  }
+
+  /* Top Control / Design Switcher Header */
+  .studio-bar {
+    padding: 16px 20px;
+    background: rgba(10, 17, 22, 0.78);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .studio-title {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .studio-title h1 {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    color: #fff;
+  }
+  .studio-title p {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .studio-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .ctrl-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 3px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+  }
+  .ctrl-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    padding: 0 6px;
+    font-weight: 500;
+  }
+  .pill-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 11.5px;
+    font-weight: 500;
+    padding: 4px 9px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: inherit;
+  }
+  .pill-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
+  .pill-btn.active {
+    background: rgba(110, 198, 255, 0.2);
+    color: #fff;
+    box-shadow: inset 0 0 0 1px rgba(110, 198, 255, 0.35);
+  }
+
+  /* Zoomed Hero Inspection Strip (Close-up matching reference) */
+  .closeup-section {
+    padding: 20px 20px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .closeup-caption {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+  }
+  .closeup-frame {
+    transform: scale(1.45);
+    transform-origin: top center;
+    margin-bottom: 18px;
+    padding: 6px 14px;
+    background: #243b43;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  }
+
+  /* Reusable Taskbar Telemetry Strip */
+  .nitro-strip {
+    display: inline-flex;
+    align-items: center;
+    height: 36px;
+    padding: 0 10px;
+    border-radius: 7px;
+    gap: 11px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .nitro-strip:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .metric-unit {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  /* Coral CPU multi-bar chart */
+  .cpu-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 1.5px;
+    height: 18px;
+    padding-bottom: 1px;
+  }
+  .cpu-bar {
+    width: 2.2px;
+    background: var(--cpu-coral);
+    border-radius: 1.5px;
+    transition: height 0.35s ease;
+  }
+
+  /* Sky-blue RAM sparkline */
+  .ram-spark {
+    width: 44px;
+    height: 20px;
+    display: block;
+  }
+
+  .metric-stack {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    line-height: 1.05;
+  }
+  .metric-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.65px;
+    color: #9cb2ba;
+    text-transform: uppercase;
+  }
+  .metric-val {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #f5f9fb;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.2px;
+    white-space: nowrap;
+  }
+
+  .strip-divider {
+    width: 1px;
+    height: 20px;
+    background: var(--divider);
+  }
+
+  /* Keep-Alive indicator inside strip */
+  .kaffe-slot {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 6px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+  }
+  .kaffe-slot.awake {
+    background: var(--kaffe-glow);
+    box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.32);
+  }
+  .kaffe-icon {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    color: #7e969f;
+    transition: color 0.2s ease;
+  }
+  .kaffe-slot.awake .kaffe-icon {
+    color: var(--kaffe-amber);
+    filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.45));
+  }
+  .kaffe-slot.awake .metric-label {
+    color: #fcd34d;
+  }
+  .kaffe-slot.awake .metric-val {
+    color: #fef3c7;
+  }
+
+  /* Desktop Stage & Flyout Anchor */
+  .desktop-stage {
+    position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding-top: 24px;
+  }
+
+  /* Windows 11 Flyout Panel */
+  .flyout-wrapper {
+    display: flex;
+    justify-content: flex-end;
+    padding-right: 118px;
+    margin-bottom: 10px;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+  .flyout-wrapper.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(10px);
+  }
+
+  .flyout {
+    width: 348px;
+    background: var(--flyout-bg);
+    backdrop-filter: blur(28px) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(0,0,0,0.4);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .flyout-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .brand-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .brand-badge {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #f3a683 0%, #6ec6ff 100%);
+    display: grid;
+    place-items: center;
+    color: #0e1920;
+    font-weight: 800;
+    font-size: 12px;
+  }
+  .brand-title {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #fff;
+  }
+  .status-chip {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .status-chip.awake {
+    background: rgba(251, 191, 36, 0.16);
+    color: #fde68a;
+    border: 1px solid rgba(251, 191, 36, 0.3);
+  }
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  /* Telemetry Cards inside Flyout */
+  .telemetry-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .t-card {
+    background: var(--card-bg);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    padding: 11px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .t-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .t-card-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .t-card-big {
+    font-size: 20px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .t-card-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .flyout-cpu-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 2.5px;
+    height: 28px;
+  }
+  .flyout-cpu-bars .cpu-bar {
+    flex: 1;
+    width: auto;
+    border-radius: 2px;
+  }
+
+  /* Keep-Alive ("Kaffe") Card */
+  .kaffe-card {
+    background: var(--card-bg);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: border-color 0.2s ease, background 0.2s ease;
+  }
+  .kaffe-card.awake {
+    background: linear-gradient(180deg, rgba(251, 191, 36, 0.09) 0%, rgba(255, 255, 255, 0.04) 100%);
+    border-color: rgba(251, 191, 36, 0.28);
+  }
+  .kaffe-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .kaffe-title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .kaffe-title {
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .kaffe-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .toggle-awake-btn {
+    border: none;
+    border-radius: 7px;
+    padding: 6px 13px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s ease;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+  }
+  .toggle-awake-btn:hover { background: rgba(255, 255, 255, 0.16); }
+  .toggle-awake-btn.awake {
+    background: var(--kaffe-amber);
+    color: #171205;
+  }
+  .toggle-awake-btn.awake:hover { background: #fcd34d; }
+
+  .preset-row {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+  }
+  .preset-chip {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-muted);
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 5px 0;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s ease;
+  }
+  .preset-chip:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
+  .preset-chip.selected {
+    background: rgba(251, 191, 36, 0.2);
+    color: #fde68a;
+    border-color: rgba(251, 191, 36, 0.45);
+  }
+
+  .custom-min-input {
+    width: 48px;
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    color: #fff;
+    font-size: 11.5px;
+    padding: 4px 6px;
+    text-align: center;
+    font-family: inherit;
+  }
+
+  .progress-track {
+    height: 3px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 80%;
+    background: var(--kaffe-amber);
+    transition: width 0.3s ease;
+  }
+
+  /* Settings Footer inside Flyout */
+  .flyout-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    font-size: 11.5px;
+    color: var(--text-muted);
+  }
+  .switch-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+  .win-switch {
+    width: 32px;
+    height: 17px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.18);
+    position: relative;
+    transition: background 0.18s ease;
+  }
+  .win-switch.on {
+    background: #6ec6ff;
+  }
+  .win-switch::after {
+    content: "";
+    position: absolute;
+    top: 2.5px;
+    left: 3px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform 0.18s ease;
+  }
+  .win-switch.on::after {
+    transform: translateX(14px);
+    background: #0b1922;
+  }
+
+  /* Simulated Windows 11 48px Taskbar */
+  .win11-taskbar {
+    height: 48px;
+    background: rgba(25, 40, 46, 0.94);
+    backdrop-filter: blur(24px);
+    border-top: 1px solid rgba(255, 255, 255, 0.09);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 14px;
+  }
+
+  .tb-left-spacer { width: 140px; font-size: 11px; color: rgba(255,255,255,0.35); }
+
+  .tb-center-apps {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tb-app-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    display: grid;
+    place-items: center;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 16px;
+  }
+  .tb-app-icon.win {
+    color: #60cdff;
+  }
+
+  .tb-right-area {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .tb-systray {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-left: 8px;
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    color: #dce6ea;
+    font-size: 11.5px;
+  }
+  .tb-clock {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    line-height: 1.15;
+    font-size: 11px;
+  }
+</style>
+</head>
+<body>
+
+  <!-- Interactive Prototype Switcher -->
+  <div class="studio-bar">
+    <div class="studio-title">
+      <h1>NitroPC — Interactive UI Specification & Prototype</h1>
+      <p>Click the taskbar widget or buttons below to test states &amp; layout options</p>
+    </div>
+    <div class="studio-controls">
+      <div class="ctrl-group">
+        <span class="ctrl-label">RAM Display:</span>
+        <button class="pill-btn active" id="btnRamPct" onclick="setRamMode('pct', this)">64% (%)</button>
+        <button class="pill-btn" id="btnRamGb" onclick="setRamMode('gb', this)">20.5 GB</button>
+        <button class="pill-btn" id="btnRamBoth" onclick="setRamMode('both', this)">64% · 20G</button>
+      </div>
+      <div class="ctrl-group">
+        <span class="ctrl-label">Keep-Alive on Bar:</span>
+        <button class="pill-btn active" id="btnBarBadge" onclick="setKaffeBarMode('badge', this)">Icon + Timer</button>
+        <button class="pill-btn" id="btnBarIcon" onclick="setKaffeBarMode('icon', this)">Compact Icon</button>
+        <button class="pill-btn" id="btnBarHidden" onclick="setKaffeBarMode('hidden', this)">CPU/RAM Only</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 1.45x Zoomed Close-Up matching reference image -->
+  <div class="closeup-section">
+    <span class="closeup-caption">Close-up of Taskbar Strip (1.45× zoom)</span>
+    <div class="closeup-frame" id="closeupFrame">
+      <div class="nitro-strip" id="heroStrip" onclick="toggleFlyout()">
+        <div class="metric-unit">
+          <div class="cpu-bars" id="heroCpuBars"></div>
+          <div class="metric-stack">
+            <span class="metric-label">CPU</span>
+            <span class="metric-val" id="heroCpuVal">24%</span>
+          </div>
+        </div>
+
+        <div class="strip-divider"></div>
+
+        <div class="metric-unit">
+          <svg class="ram-spark" viewBox="0 0 44 20" id="heroRamSvg"></svg>
+          <div class="metric-stack">
+            <span class="metric-label">RAM</span>
+            <span class="metric-val" id="heroRamVal">64%</span>
+          </div>
+        </div>
+
+        <div class="strip-divider" id="heroKaffeDiv"></div>
+
+        <div class="kaffe-slot awake" id="heroKaffeSlot">
+          <svg class="kaffe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 8h1a4 4 0 1 1 0 8h-1"/>
+            <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/>
+            <line x1="6" y1="2" x2="6" y2="4"/>
+            <line x1="10" y1="2" x2="10" y2="4"/>
+            <line x1="14" y1="2" x2="14" y2="4"/>
+          </svg>
+          <div class="metric-stack" id="heroKaffeText">
+            <span class="metric-label" id="heroKaffeLabel">AWAKE</span>
+            <span class="metric-val" id="heroKaffeVal">49m</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Simulated Windows 11 Desktop Bottom + Flyout + 48px Taskbar -->
+  <div class="desktop-stage">
+    <div class="flyout-wrapper" id="flyoutWrapper">
+      <div class="flyout" id="flyoutCard">
+        <div class="flyout-header">
+          <div class="brand-row">
+            <div class="brand-badge">N</div>
+            <span class="brand-title">NitroPC Toolbox</span>
+          </div>
+          <div class="status-chip awake" id="flyoutStatusChip">
+            <span class="status-dot"></span>
+            <span id="flyoutStatusText">Awake · 00:48:19</span>
+          </div>
+        </div>
+
+        <!-- CPU & Memory Detail Cards -->
+        <div class="telemetry-grid">
+          <div class="t-card">
+            <div class="t-card-top">
+              <span class="t-card-label">CPU Load</span>
+              <span class="t-card-big" style="color: var(--cpu-coral);" id="flyoutCpuBig">24%</span>
+            </div>
+            <div class="flyout-cpu-bars" id="flyoutCpuBars"></div>
+            <span class="t-card-sub">14 logical cores · 3.8 GHz</span>
+          </div>
+
+          <div class="t-card">
+            <div class="t-card-top">
+              <span class="t-card-label">Memory</span>
+              <span class="t-card-big" style="color: var(--ram-blue);" id="flyoutRamBig">64%</span>
+            </div>
+            <svg viewBox="0 0 130 28" width="100%" height="28" id="flyoutRamSvg"></svg>
+            <span class="t-card-sub">20.5 / 32.0 GB used</span>
+          </div>
+        </div>
+
+        <!-- Keep-Alive ("Kaffe") Control Card -->
+        <div class="kaffe-card awake" id="flyoutKaffeCard">
+          <div class="kaffe-top">
+            <div class="kaffe-title-group">
+              <span class="kaffe-title">
+                <span>☕ Keep Awake</span>
+              </span>
+              <span class="kaffe-sub" id="kaffeDetailSub">Active — prevents sleep, lock &amp; Teams away</span>
+            </div>
+            <button class="toggle-awake-btn awake" id="awakeToggleBtn" onclick="toggleAwake()">Stop</button>
+          </div>
+
+          <div class="preset-row">
+            <button class="preset-chip" onclick="selectPreset(30, this)">30m</button>
+            <button class="preset-chip selected" onclick="selectPreset(60, this)">1h</button>
+            <button class="preset-chip" onclick="selectPreset(120, this)">2h</button>
+            <button class="preset-chip" onclick="selectPreset(240, this)">4h</button>
+            <button class="preset-chip" onclick="selectPreset(0, this)">∞</button>
+            <input id="customMinInput" class="custom-min-input" type="number" min="1" max="1440" value="60" title="Custom minutes" onchange="applyCustomMinutes(this.value)" />
+          </div>
+
+          <div class="progress-track" id="kaffeProgressTrack">
+            <div class="progress-fill" id="kaffeProgressFill"></div>
+          </div>
+        </div>
+
+        <!-- Footer Settings -->
+        <div class="flyout-footer">
+          <div class="switch-row" onclick="toggleStartup()">
+            <div class="win-switch on" id="startupSwitch"></div>
+            <span>Start with Windows</span>
+          </div>
+          <span>Win11 Taskbar · ~18 MB</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actual 1x Scale 48px Windows 11 Taskbar -->
+    <div class="win11-taskbar">
+      <div class="tb-left-spacer">22°C Mostly sunny</div>
+
+      <div class="tb-center-apps">
+        <div class="tb-app-icon win">⊞</div>
+        <div class="tb-app-icon">🔍</div>
+        <div class="tb-app-icon">📁</div>
+        <div class="tb-app-icon">🌐</div>
+        <div class="tb-app-icon">💬</div>
+      </div>
+
+      <div class="tb-right-area">
+        <!-- Docked NitroPC Strip inside Windows 11 Taskbar -->
+        <div class="nitro-strip" id="tbStrip" onclick="toggleFlyout()" title="Click to toggle NitroPC Flyout">
+          <div class="metric-unit">
+            <div class="cpu-bars" id="tbCpuBars"></div>
+            <div class="metric-stack">
+              <span class="metric-label">CPU</span>
+              <span class="metric-val" id="tbCpuVal">24%</span>
+            </div>
+          </div>
+
+          <div class="strip-divider"></div>
+
+          <div class="metric-unit">
+            <svg class="ram-spark" viewBox="0 0 44 20" id="tbRamSvg"></svg>
+            <div class="metric-stack">
+              <span class="metric-label">RAM</span>
+              <span class="metric-val" id="tbRamVal">64%</span>
+            </div>
+          </div>
+
+          <div class="strip-divider" id="tbKaffeDiv"></div>
+
+          <div class="kaffe-slot awake" id="tbKaffeSlot">
+            <svg class="kaffe-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 8h1a4 4 0 1 1 0 8h-1"/>
+              <path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/>
+              <line x1="6" y1="2" x2="6" y2="4"/>
+              <line x1="10" y1="2" x2="10" y2="4"/>
+              <line x1="14" y1="2" x2="14" y2="4"/>
+            </svg>
+            <div class="metric-stack" id="tbKaffeText">
+              <span class="metric-label" id="tbKaffeLabel">AWAKE</span>
+              <span class="metric-val" id="tbKaffeVal">49m</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="tb-systray">
+          <span>⌃</span>
+          <span>📶</span>
+          <span>🔊</span>
+          <div class="tb-clock">
+            <span>14:28</span>
+            <span>2026-11-18</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const params = new URLSearchParams(window.location.search);
+  let ramMode = params.get('ram') || 'pct';
+  let kaffeBarMode = params.get('bar') || 'badge';
+  let isAwake = params.get('state') !== 'idle';
+  let isStatic = params.get('static') === '1';
+
+  let remainingSeconds = 48 * 60 + 19;
+  let totalSeconds = 60 * 60;
+  let cpuCores = [34, 44, 52, 36, 38, 62, 82, 54, 40, 46, 42, 48, 38, 44];
+  let ramHistory = [38, 40, 44, 74, 78, 60, 58, 62, 64];
+
+  function initBars(containerId, count) {
+    const el = document.getElementById(containerId);
+    el.innerHTML = '';
+    for (let i = 0; i < count; i++) {
+      const b = document.createElement('div');
+      b.className = 'cpu-bar';
+      b.style.height = Math.max(20, cpuCores[i % cpuCores.length]) + '%';
+      el.appendChild(b);
+    }
+  }
+
+  function renderSparkline(svgId, width, height) {
+    const svg = document.getElementById(svgId);
+    const pts = ramHistory.map((val, idx) => {
+      const x = (idx / (ramHistory.length - 1)) * width;
+      const y = height - 2 - ((val / 100) * (height - 5));
+      return [x, y];
+    });
+
+    let d = `M ${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
+    for (let i = 1; i < pts.length; i++) {
+      const prev = pts[i - 1];
+      const curr = pts[i];
+      const cx = ((prev[0] + curr[0]) / 2).toFixed(1);
+      d += ` C ${cx} ${prev[1].toFixed(1)}, ${cx} ${curr[1].toFixed(1)}, ${curr[0].toFixed(1)} ${curr[1].toFixed(1)}`;
+    }
+    const fillD = `${d} L ${width} ${height} L 0 ${height} Z`;
+
+    svg.innerHTML = `
+      <line x1="0" y1="4" x2="${width}" y2="4" stroke="rgba(255,255,255,0.20)" stroke-width="1" stroke-dasharray="3,3" />
+      <path d="${fillD}" fill="rgba(110, 198, 255, 0.25)" />
+      <path d="${d}" fill="none" stroke="#6ec6ff" stroke-width="2.2" stroke-linecap="round" />
+    `;
+  }
+
+  function updateDisplay() {
+    const avgCpu = Math.round(cpuCores.reduce((a, b) => a + b, 0) / cpuCores.length / 2);
+    document.getElementById('heroCpuVal').textContent = avgCpu + '%';
+    document.getElementById('tbCpuVal').textContent = avgCpu + '%';
+    document.getElementById('flyoutCpuBig').textContent = avgCpu + '%';
+
+    const ramPct = ramHistory[ramHistory.length - 1];
+    const ramGb = ((ramPct / 100) * 32).toFixed(1);
+    const ramText = ramMode === 'pct' ? `${ramPct}%`
+                  : ramMode === 'gb'  ? `${Math.round(ramGb)} GB`
+                  : `${ramPct}% · ${Math.round(ramGb)}G`;
+    document.getElementById('heroRamVal').textContent = ramText;
+    document.getElementById('tbRamVal').textContent = ramText;
+    document.getElementById('flyoutRamBig').textContent = `${ramPct}%`;
+
+    ['heroCpuBars', 'tbCpuBars', 'flyoutCpuBars'].forEach(id => {
+      const bars = document.getElementById(id).children;
+      for (let i = 0; i < bars.length; i++) {
+        bars[i].style.height = Math.max(18, cpuCores[i % cpuCores.length]) + '%';
+      }
+    });
+
+    renderSparkline('heroRamSvg', 44, 20);
+    renderSparkline('tbRamSvg', 44, 20);
+    renderSparkline('flyoutRamSvg', 130, 28);
+
+    const minsLeft = totalSeconds === 0 ? '∞' : Math.ceil(remainingSeconds / 60) + 'm';
+    const hh = String(Math.floor(remainingSeconds / 3600)).padStart(2, '0');
+    const mm = String(Math.floor((remainingSeconds % 3600) / 60)).padStart(2, '0');
+    const ss = String(remainingSeconds % 60).padStart(2, '0');
+    const clockStr = totalSeconds === 0 ? 'Indefinite (∞)' : `${hh}:${mm}:${ss}`;
+
+    ['hero', 'tb'].forEach(prefix => {
+      const slot = document.getElementById(prefix + 'KaffeSlot');
+      const div = document.getElementById(prefix + 'KaffeDiv');
+      const txt = document.getElementById(prefix + 'KaffeText');
+      const lbl = document.getElementById(prefix + 'KaffeLabel');
+      const val = document.getElementById(prefix + 'KaffeVal');
+
+      slot.style.display = kaffeBarMode === 'hidden' ? 'none' : 'flex';
+      div.style.display = kaffeBarMode === 'hidden' ? 'none' : 'block';
+      txt.style.display = kaffeBarMode === 'badge' ? 'flex' : 'none';
+
+      slot.classList.toggle('awake', isAwake);
+      lbl.textContent = isAwake ? 'AWAKE' : 'IDLE';
+      val.textContent = isAwake ? minsLeft : 'Off';
+    });
+
+    const chip = document.getElementById('flyoutStatusChip');
+    const chipTxt = document.getElementById('flyoutStatusText');
+    const card = document.getElementById('flyoutKaffeCard');
+    const btn = document.getElementById('awakeToggleBtn');
+    const sub = document.getElementById('kaffeDetailSub');
+    const prog = document.getElementById('kaffeProgressFill');
+
+    chip.classList.toggle('awake', isAwake);
+    card.classList.toggle('awake', isAwake);
+    btn.classList.toggle('awake', isAwake);
+    chipTxt.textContent = isAwake ? `Awake · ${clockStr}` : 'Idle';
+    btn.textContent = isAwake ? 'Stop' : 'Start';
+    sub.textContent = isAwake
+      ? 'Active — prevents sleep, lock & Teams away'
+      : 'Paused — normal Windows sleep & idle rules';
+    prog.style.width = !isAwake ? '0%' : (totalSeconds === 0 ? '100%' : `${(remainingSeconds / totalSeconds) * 100}%`);
+  }
+
+  function setRamMode(mode, btn) {
+    ramMode = mode;
+    if (btn) {
+      btn.parentElement.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+    updateDisplay();
+  }
+
+  function setKaffeBarMode(mode, btn) {
+    kaffeBarMode = mode;
+    if (btn) {
+      btn.parentElement.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+    updateDisplay();
+  }
+
+  function toggleAwake() {
+    isAwake = !isAwake;
+    if (isAwake && remainingSeconds <= 0 && totalSeconds > 0) remainingSeconds = totalSeconds;
+    updateDisplay();
+  }
+
+  function selectPreset(mins, btn) {
+    btn.parentElement.querySelectorAll('.preset-chip').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    if (mins > 0) document.getElementById('customMinInput').value = mins;
+    totalSeconds = mins * 60;
+    remainingSeconds = mins * 60;
+    isAwake = true;
+    updateDisplay();
+  }
+
+  function applyCustomMinutes(val) {
+    const mins = Math.max(1, parseInt(val || '60', 10));
+    document.querySelectorAll('.preset-chip').forEach(b => b.classList.remove('selected'));
+    totalSeconds = mins * 60;
+    remainingSeconds = mins * 60;
+    isAwake = true;
+    updateDisplay();
+  }
+
+  function toggleStartup() {
+    document.getElementById('startupSwitch').classList.toggle('on');
+  }
+
+  function toggleFlyout() {
+    document.getElementById('flyoutWrapper').classList.toggle('hidden');
+  }
+
+  initBars('heroCpuBars', 14);
+  initBars('tbCpuBars', 14);
+  initBars('flyoutCpuBars', 14);
+  updateDisplay();
+
+  if (!isStatic) {
+    setInterval(() => {
+      cpuCores = cpuCores.map(v => Math.max(16, Math.min(96, v + Math.round((Math.random() - 0.5) * 20))));
+      if (Math.random() > 0.55) {
+        const nextRam = Math.max(45, Math.min(82, ramHistory[ramHistory.length - 1] + Math.round((Math.random() - 0.48) * 3)));
+        ramHistory.push(nextRam);
+        ramHistory.shift();
+      }
+      if (isAwake && totalSeconds > 0 && remainingSeconds > 0) {
+        remainingSeconds--;
+      }
+      updateDisplay();
+    }, 1000);
+  }
+</script>
+</body>
+</html>
