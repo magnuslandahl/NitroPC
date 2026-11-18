@@ -297,13 +297,18 @@ public partial class App : WpfApplication
         }
 
         _updateCheckInProgress = true;
-        _flyoutWindow?.SetUpdateStatus(interactive
-            ? "Checking for updates…"
-            : "Checking for updates in the background…");
+        if (interactive)
+        {
+            _flyoutWindow?.SetUpdateStatus("Checking for updates…");
+        }
+
         try
         {
             var result = await _updateService.CheckAsync();
-            _flyoutWindow?.SetUpdateStatus(result.Message);
+            if (interactive || result.Available)
+            {
+                _flyoutWindow?.SetUpdateStatus(result.Message);
+            }
             if (!result.Installable)
             {
                 if (interactive && result.Checked)

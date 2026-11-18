@@ -4,10 +4,9 @@ namespace NitroPC.Helpers;
 
 internal static class TaskbarLayout
 {
-    public static int? FindAvailableSlot(
+    public static int? FindRightAnchoredSlot(
         NativeMethods.RECT shell,
         NativeMethods.RECT tray,
-        NativeMethods.RECT? rebar,
         IReadOnlyList<NativeMethods.RECT> obstacles,
         int width,
         int margin)
@@ -18,23 +17,12 @@ internal static class TaskbarLayout
         }
 
         var minimumX = shell.Left + margin;
-        var maximumX = tray.Left - margin - width;
-        if (maximumX < minimumX)
-        {
-            return null;
-        }
+        var candidate = tray.Left - margin - width;
 
-        // Place the strip immediately after the task-list rebar. Windows 11
-        // renders Widgets/Weather inside a full-width composition window, so
-        // anchoring beside the tray cannot detect or avoid that overlap.
-        var candidate = rebar is { } value
-            ? Math.Clamp(value.Right + margin, minimumX, maximumX)
-            : maximumX;
-
-        while (candidate <= maximumX)
+        while (candidate >= minimumX)
         {
             var colliding = obstacles
-                .Where(rect => Overlaps(candidate, width, rect.Left, rect.Right))
+                .Where(rect => OverlapsWithMargin(candidate, width, rect.Left, rect.Right, margin))
                 .OrderBy(rect => rect.Left)
                 .Cast<NativeMethods.RECT?>()
                 .FirstOrDefault();
@@ -44,12 +32,12 @@ internal static class TaskbarLayout
                 return candidate;
             }
 
-            candidate = colliding.Value.Right + margin;
+            candidate = colliding.Value.Left - margin - width;
         }
 
         return null;
     }
 
-    private static bool Overlaps(int left, int width, int otherLeft, int otherRight) =>
-        left < otherRight && left + width > otherLeft;
+    private static bool OverlapsWithMargin(int left, int width, int otherLeft, int otherRight, int margin) =>
+        left < otherRight + margin && left + width > otherLeft - margin;
 }

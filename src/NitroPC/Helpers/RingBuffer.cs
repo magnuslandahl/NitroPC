@@ -20,10 +20,10 @@ internal sealed class RingBuffer
 
     public void Push(double value)
     {
-        if (_count == 0)
+        if (_count < _values.Length)
         {
-            Array.Fill(_values, value);
-            _count = _values.Length;
+            _values[_count] = value;
+            _count++;
         }
         else
         {

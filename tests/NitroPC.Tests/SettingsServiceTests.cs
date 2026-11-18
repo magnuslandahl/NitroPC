@@ -13,7 +13,7 @@ public sealed class SettingsServiceTests
         var expected = new NitroSettings
         {
             KeepAwakeMinutes = 120,
-            CpuDisplayMode = CpuDisplayMode.History,
+            CpuDisplayMode = CpuDisplayMode.Cores,
             RamDisplayMode = RamDisplayMode.Both,
             KeepAwakeBarMode = KeepAwakeBarMode.CompactIcon,
             AutoStartKeepAwakeOnLaunch = true,
@@ -43,7 +43,7 @@ public sealed class SettingsServiceTests
         var actual = new SettingsService(path).Load();
 
         Assert.Equal(60, actual.KeepAwakeMinutes);
-        Assert.Equal(CpuDisplayMode.Cores, actual.CpuDisplayMode);
+        Assert.Equal(CpuDisplayMode.History, actual.CpuDisplayMode);
         Assert.Equal(RamDisplayMode.Percent, actual.RamDisplayMode);
         Assert.Equal(KeepAwakeBarMode.Badge, actual.KeepAwakeBarMode);
         Assert.True(actual.AutomaticallyCheckForUpdates);

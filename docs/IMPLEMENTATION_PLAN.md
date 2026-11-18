@@ -16,9 +16,10 @@ NitroPC combines two utilities into one sleek Windows 11 taskbar toolbox:
 
 The feedback pass added these behavior and safety requirements to the original phases:
 
-- `TaskbarLayout` searches immediately after `ReBarWindow32` for a collision-free slot, because Windows 11 renders Weather/Widgets inside a full-width composition window without a separate Win32 rectangle. It only falls back to the tray-side placement when the task-list rebar cannot be read. Fixed percentage columns and bottom-aligned charts prevent horizontal movement.
-- `SystemMetricsService` retains 24 seconds of total CPU history. `CpuDisplayMode` selects logical cores or history in both the strip and flyout; the newest history bar and RAM sample receive stronger accents.
-- Secondary flyout controls live behind the header gear. The default flyout keeps metrics, Keep Awake, and Quiet Mode visible.
+- `TaskbarObstacleScanner` queries Windows UI Automation button rectangles inside `Shell_TrayWnd` on a background timer so `TaskbarLayout.FindRightAnchoredSlot` places the strip immediately to the left of Weather/Widgets and `TrayNotifyWnd` without overlapping taskbar app icons (hiding cleanly if no collision-free slot exists). Fixed percentage columns and bottom-aligned charts prevent horizontal movement.
+- `SystemMetricsService` samples every 2 seconds into a progressive 30-sample (60-second) ring buffer. `CpuDisplayMode` defaults to `History` (loading right-to-left with subtle empty slot markers and a highlighted newest bar), and `RamSparklineControl` loads right-to-left with dynamic Y-windowing so memory changes are clearly visible.
+- Keep Awake uses five clean presets (`1h`, `2h`, `4h`, `8h`, `∞`) with clear sleep/screen-lock/screensaver copy.
+- Clicking the top-right gear switches into a dedicated `Settings` view (`← Back   Settings`) rather than appending controls below the main cards.
 - `QuietModeService` reads the active plan's `PERFBOOSTMODE` AC/DC values, persists a recovery marker, writes `Disabled` (`0`) only to that setting, and restores the original values on exit. It never writes fan speed or other processor policy values.
 - `QuietModeRecoveryState` remains in `settings.json` only while a changed policy is active. NitroPC restores and clears interrupted-session state on the next launch.
 - `TaskbarLayoutTests` and `QuietModeServiceTests` cover collision fallback, original-policy persistence, restore, interrupted recovery, and rollback after a failed change.

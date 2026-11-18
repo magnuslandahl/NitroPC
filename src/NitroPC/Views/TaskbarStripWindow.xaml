@@ -13,6 +13,7 @@
         Height="48">
     <Border x:Name="RootBorder"
             Height="36"
+            Opacity="0"
             VerticalAlignment="Center"
             CornerRadius="7"
             Padding="10,0"
@@ -32,9 +33,9 @@
         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
             <StackPanel Orientation="Horizontal" Margin="0,0,10,0">
                 <controls:CpuBarsControl x:Name="CpuBars"
-                                          Width="50"
+                                          Width="48"
                                           Height="18"
-                                          MaxBars="24"
+                                          MaxBars="20"
                                           BarBrush="{StaticResource CpuCoralBrush}"
                                           LatestBarBrush="{StaticResource CpuLatestBrush}"
                                           VerticalAlignment="Bottom"/>
@@ -63,7 +64,8 @@
             <StackPanel Orientation="Horizontal" Margin="0,0,10,0">
                 <controls:RamSparklineControl x:Name="RamSparkline"
                                                Width="44"
-                                               Height="20"
+                                               Height="18"
+                                               MaxSamples="20"
                                                StrokeBrush="{StaticResource RamBlueBrush}"
                                                FillBrush="{StaticResource RamFillBrush}"
                                                GuideBrush="{StaticResource SparkGuideBrush}"
@@ -111,7 +113,7 @@
                                   StrokeLineJoin="Round"/>
                         </Canvas>
                     </Viewbox>
-                    <StackPanel x:Name="KeepAwakeText" Width="46" VerticalAlignment="Bottom">
+                    <StackPanel x:Name="KeepAwakeText" Width="50" VerticalAlignment="Bottom">
                         <TextBlock x:Name="KeepAwakeLabel"
                                    Text="IDLE"
                                    FontFamily="{StaticResource NitroFont}"

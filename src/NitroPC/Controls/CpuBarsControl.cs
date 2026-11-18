@@ -44,6 +44,15 @@ public sealed class CpuBarsControl : FrameworkElement
             typeof(CpuBarsControl),
             new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
 
+    public static readonly DependencyProperty IsHistoryModeProperty =
+        DependencyProperty.Register(
+            nameof(IsHistoryMode),
+            typeof(bool),
+            typeof(CpuBarsControl),
+            new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    private static readonly Brush EmptySlotBrush = CreateFrozenBrush(0x16, 0xFF, 0xFF, 0xFF);
+
     public IReadOnlyList<double> Values
     {
         get => (IReadOnlyList<double>)GetValue(ValuesProperty);
@@ -74,6 +83,12 @@ public sealed class CpuBarsControl : FrameworkElement
         set => SetValue(HighlightLatestBarProperty, value);
     }
 
+    public bool IsHistoryMode
+    {
+        get => (bool)GetValue(IsHistoryModeProperty);
+        set => SetValue(IsHistoryModeProperty, value);
+    }
+
     protected override void OnRender(DrawingContext drawingContext)
     {
         base.OnRender(drawingContext);
@@ -82,26 +97,80 @@ public sealed class CpuBarsControl : FrameworkElement
             return;
         }
 
+        if (IsHistoryMode)
+        {
+            RenderHistoryBars(drawingContext);
+            return;
+        }
+
         var values = CpuCalculator.DownsampleBars(Values, MaxBars);
-        var gap = values.Length >= 20
-            ? 0.6
-            : values.Length > 14
-                ? 1
-                : 1.5;
-        var barWidth = Math.Max(0.8, (ActualWidth - gap * (values.Length - 1)) / values.Length);
+        var (barWidth, gap) = ComputeSlotMetrics(values.Length);
 
         for (var index = 0; index < values.Length; index++)
         {
-            var percent = Math.Clamp(values[index] / 100.0, 0.18, 1.0);
+            var percent = Math.Clamp(values[index] / 100.0, 0.14, 1.0);
             var height = ActualHeight * percent;
             var x = index * (barWidth + gap);
             drawingContext.DrawRoundedRectangle(
                 HighlightLatestBar && index == values.Length - 1 ? LatestBarBrush : BarBrush,
                 null,
                 new Rect(x, ActualHeight - height, barWidth, height),
-                1.1,
-                1.1);
+                1.0,
+                1.0);
         }
+    }
+
+    private void RenderHistoryBars(DrawingContext drawingContext)
+    {
+        var slotCount = MaxBars;
+        var (barWidth, gap) = ComputeSlotMetrics(slotCount);
+        var count = Math.Min(Values.Count, slotCount);
+        var sourceOffset = Values.Count - count;
+        var firstActiveSlot = slotCount - count;
+
+        for (var slot = 0; slot < firstActiveSlot; slot++)
+        {
+            var emptyX = slot * (barWidth + gap);
+            drawingContext.DrawRoundedRectangle(
+                EmptySlotBrush,
+                null,
+                new Rect(emptyX, ActualHeight - 2.0, barWidth, 2.0),
+                0.8,
+                0.8);
+        }
+
+        for (var index = 0; index < count; index++)
+        {
+            var slot = firstActiveSlot + index;
+            var percent = Math.Clamp(Values[sourceOffset + index] / 100.0, 0.14, 1.0);
+            var height = ActualHeight * percent;
+            var x = slot * (barWidth + gap);
+            var brush = HighlightLatestBar && index == count - 1 ? LatestBarBrush : BarBrush;
+            drawingContext.DrawRoundedRectangle(
+                brush,
+                null,
+                new Rect(x, ActualHeight - height, barWidth, height),
+                1.0,
+                1.0);
+        }
+    }
+
+    private (double BarWidth, double Gap) ComputeSlotMetrics(int slots)
+    {
+        var gap = ActualWidth <= 60
+            ? 0.85
+            : slots >= 24
+                ? 1.4
+                : 1.8;
+        var barWidth = Math.Max(0.9, (ActualWidth - gap * Math.Max(0, slots - 1)) / Math.Max(1, slots));
+        return (barWidth, gap);
+    }
+
+    private static SolidColorBrush CreateFrozenBrush(byte a, byte r, byte g, byte b)
+    {
+        var brush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(a, r, g, b));
+        brush.Freeze();
+        return brush;
     }
 
     private static bool ValidateMaxBars(object value) => (int)value > 0;

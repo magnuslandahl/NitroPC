@@ -26,7 +26,8 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <StackPanel Orientation="Horizontal">
+
+                <StackPanel x:Name="BrandHeader" Orientation="Horizontal" VerticalAlignment="Center">
                     <Border Width="24" Height="24" CornerRadius="6">
                         <Border.Background>
                             <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
@@ -50,21 +51,61 @@
                                FontWeight="SemiBold"
                                Foreground="{StaticResource TextPrimaryBrush}"/>
                 </StackPanel>
+
+                <StackPanel x:Name="SettingsHeader"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center"
+                            Visibility="Collapsed">
+                    <Button Padding="7,4"
+                            Style="{StaticResource NitroChip}"
+                            Click="OnBackToMainClicked"
+                            ToolTip="Back to Toolbox">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Viewbox Width="12" Height="12" Margin="0,0,5,0" VerticalAlignment="Center">
+                                <Canvas Width="24" Height="24">
+                                    <Path Data="M 19,12 H 5 M 12,19 L 5,12 L 12,5"
+                                          Stroke="{StaticResource TextPrimaryBrush}"
+                                          StrokeThickness="2.4"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          StrokeLineJoin="Round"/>
+                                </Canvas>
+                            </Viewbox>
+                            <TextBlock Text="Back"
+                                       VerticalAlignment="Center"
+                                       FontFamily="{StaticResource NitroFont}"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"/>
+                        </StackPanel>
+                    </Button>
+                    <TextBlock Text="Settings"
+                               Margin="9,0,0,0"
+                               VerticalAlignment="Center"
+                               FontFamily="{StaticResource NitroFont}"
+                               FontSize="13.5"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource TextPrimaryBrush}"/>
+                </StackPanel>
+
                 <Border x:Name="StatusChip"
                         Grid.Column="1"
-                        Padding="8,3"
+                        VerticalAlignment="Center"
+                        Padding="9,4"
                         CornerRadius="10"
                         Background="{StaticResource CardBackgroundBrush}"
                         BorderBrush="{StaticResource CardBorderBrush}"
                         BorderThickness="1">
-                    <StackPanel Orientation="Horizontal">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <Ellipse x:Name="StatusDot"
                                  Width="6"
                                  Height="6"
-                                 Margin="0,0,5,0"
+                                 Margin="0,0,6,0"
+                                 VerticalAlignment="Center"
                                  Fill="{StaticResource TextMutedBrush}"/>
                         <TextBlock x:Name="StatusText"
                                    Text="Idle"
+                                   VerticalAlignment="Center"
                                    FontFamily="{StaticResource NitroFont}"
                                    FontSize="11"
                                    FontWeight="SemiBold"
@@ -72,359 +113,405 @@
                                    Foreground="{StaticResource TextMutedBrush}"/>
                     </StackPanel>
                 </Border>
+
                 <Button x:Name="SettingsButton"
                         Grid.Column="2"
                         Width="28"
                         Height="28"
                         Margin="6,0,0,0"
                         Padding="0"
-                        ToolTip="Display and application settings"
-                        Style="{StaticResource NitroTextButton}"
+                        VerticalAlignment="Center"
+                        Background="{StaticResource CardBackgroundBrush}"
+                        BorderBrush="{StaticResource CardBorderBrush}"
+                        ToolTip="Settings"
+                        Style="{StaticResource NitroButton}"
                         Click="OnSettingsToggle">
-                    <TextBlock Text="&#xE713;"
-                               FontFamily="Segoe MDL2 Assets"
-                               FontSize="14"
-                               Foreground="{StaticResource TextMutedBrush}"/>
+                    <Viewbox Width="14" Height="14">
+                        <Canvas Width="24" Height="24">
+                            <Ellipse Canvas.Left="9"
+                                     Canvas.Top="9"
+                                     Width="6"
+                                     Height="6"
+                                     Stroke="{StaticResource TextMutedBrush}"
+                                     StrokeThickness="2"/>
+                            <Path x:Name="SettingsIconPath"
+                                  Data="M 19.4,15 A 1.65,1.65 0 0 0 19.73,16.82 L 19.79,16.88 A 2,2 0 1 1 16.96,19.71 L 16.9,19.65 A 1.65,1.65 0 0 0 15.08,19.32 A 1.65,1.65 0 0 0 14,20.83 V 21 A 2,2 0 1 1 10,21 V 20.91 A 1.65,1.65 0 0 0 8.92,19.4 A 1.65,1.65 0 0 0 7.1,19.73 L 7.04,19.79 A 2,2 0 1 1 4.21,16.96 L 4.27,16.9 A 1.65,1.65 0 0 0 4.6,15.08 A 1.65,1.65 0 0 0 3.09,14 H 3 A 2,2 0 1 1 3,10 H 3.09 A 1.65,1.65 0 0 0 4.6,8.92 A 1.65,1.65 0 0 0 4.27,7.1 L 4.21,7.04 A 2,2 0 1 1 7.04,4.21 L 7.1,4.27 A 1.65,1.65 0 0 0 8.92,4.6 H 9 A 1.65,1.65 0 0 0 10,3.09 V 3 A 2,2 0 1 1 14,3 V 3.09 A 1.65,1.65 0 0 0 15,4.6 A 1.65,1.65 0 0 0 16.82,4.27 L 16.88,4.21 A 2,2 0 1 1 19.71,7.04 L 19.65,7.1 A 1.65,1.65 0 0 0 19.32,8.92 V 9 A 1.65,1.65 0 0 0 20.83,10 H 21 A 2,2 0 1 1 21,14 H 20.91 A 1.65,1.65 0 0 0 19.4,15 Z"
+                                  Stroke="{StaticResource TextMutedBrush}"
+                                  StrokeThickness="1.9"
+                                  StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round"
+                                  StrokeLineJoin="Round"/>
+                        </Canvas>
+                    </Viewbox>
                 </Button>
             </Grid>
 
-            <Grid Margin="0,12,0,0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="10"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
+            <StackPanel x:Name="MainViewPanel">
+                <Grid Margin="0,12,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="10"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
 
-                <Border Padding="11,10"
+                    <Border Padding="11,10"
+                            Background="{StaticResource CardBackgroundBrush}"
+                            BorderBrush="{StaticResource CardBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="10">
+                        <StackPanel>
+                            <Grid>
+                                <TextBlock Text="CPU LOAD"
+                                           FontFamily="{StaticResource NitroFont}"
+                                           FontSize="10.5"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextMutedBrush}"/>
+                                <TextBlock x:Name="CpuLargeValue"
+                                           HorizontalAlignment="Right"
+                                           Text="0%"
+                                           FontFamily="{StaticResource NitroFont}"
+                                           FontSize="20"
+                                           FontWeight="Bold"
+                                           Typography.NumeralAlignment="Tabular"
+                                           Foreground="{StaticResource CpuCoralBrush}"/>
+                            </Grid>
+                            <controls:CpuBarsControl x:Name="CpuLargeBars"
+                                                      Height="28"
+                                                      Margin="0,7,0,0"
+                                                      MaxBars="30"
+                                                      BarBrush="{StaticResource CpuCoralBrush}"
+                                                      LatestBarBrush="{StaticResource CpuLatestBrush}"/>
+                            <TextBlock x:Name="CpuCoresText"
+                                       Margin="0,6,0,0"
+                                       Text="60-second history"
+                                       FontFamily="{StaticResource NitroFont}"
+                                       FontSize="10.5"
+                                       Foreground="{StaticResource TextMutedBrush}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="2"
+                            Padding="11,10"
+                            Background="{StaticResource CardBackgroundBrush}"
+                            BorderBrush="{StaticResource CardBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="10">
+                        <StackPanel>
+                            <Grid>
+                                <TextBlock Text="MEMORY"
+                                           FontFamily="{StaticResource NitroFont}"
+                                           FontSize="10.5"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextMutedBrush}"/>
+                                <TextBlock x:Name="RamLargeValue"
+                                           HorizontalAlignment="Right"
+                                           Text="0%"
+                                           FontFamily="{StaticResource NitroFont}"
+                                           FontSize="20"
+                                           FontWeight="Bold"
+                                           Typography.NumeralAlignment="Tabular"
+                                           Foreground="{StaticResource RamBlueBrush}"/>
+                            </Grid>
+                            <controls:RamSparklineControl x:Name="RamLargeSparkline"
+                                                           Height="28"
+                                                           Margin="0,7,0,0"
+                                                           MaxSamples="30"
+                                                           StrokeBrush="{StaticResource RamBlueBrush}"
+                                                           FillBrush="{StaticResource RamFillBrush}"
+                                                           GuideBrush="{StaticResource SparkGuideBrush}"
+                                                           LatestPointBrush="{StaticResource RamLatestBrush}"/>
+                            <TextBlock x:Name="RamDetailText"
+                                       Margin="0,6,0,0"
+                                       Text="0.0 / 0.0 GB · 60s"
+                                       FontFamily="{StaticResource NitroFont}"
+                                       FontSize="10.5"
+                                       Typography.NumeralAlignment="Tabular"
+                                       Foreground="{StaticResource TextMutedBrush}"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <Border x:Name="KeepAwakeCard"
+                        Margin="0,12,0,0"
+                        Padding="12"
                         Background="{StaticResource CardBackgroundBrush}"
                         BorderBrush="{StaticResource CardBorderBrush}"
                         BorderThickness="1"
                         CornerRadius="10">
                     <StackPanel>
                         <Grid>
-                            <TextBlock Text="CPU LOAD"
-                                       FontFamily="{StaticResource NitroFont}"
-                                       FontSize="10.5"
-                                       FontWeight="SemiBold"
-                                       Foreground="{StaticResource TextMutedBrush}"/>
-                            <TextBlock x:Name="CpuLargeValue"
-                                       HorizontalAlignment="Right"
-                                       Text="0%"
-                                       FontFamily="{StaticResource NitroFont}"
-                                       FontSize="20"
-                                       FontWeight="Bold"
-                                       Typography.NumeralAlignment="Tabular"
-                                       Foreground="{StaticResource CpuCoralBrush}"/>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Viewbox Width="15" Height="15" Margin="0,0,6,0" VerticalAlignment="Center">
+                                        <Canvas Width="24" Height="24">
+                                            <Path Data="M 17,8 H 18 A 4,4 0 1 1 18,16 H 17 M 3,8 H 17 V 17 A 4,4 0 0 1 13,21 H 7 A 4,4 0 0 1 3,17 Z M 6,2 V 4 M 10,2 V 4 M 14,2 V 4"
+                                                  Stroke="{StaticResource KaffeAmberBrush}"
+                                                  StrokeThickness="2.2"
+                                                  StrokeStartLineCap="Round"
+                                                  StrokeEndLineCap="Round"
+                                                  StrokeLineJoin="Round"/>
+                                        </Canvas>
+                                    </Viewbox>
+                                    <TextBlock Text="Keep Awake"
+                                               VerticalAlignment="Center"
+                                               FontFamily="{StaticResource NitroFont}"
+                                               FontSize="13"
+                                               FontWeight="SemiBold"
+                                               Foreground="{StaticResource TextPrimaryBrush}"/>
+                                </StackPanel>
+                                <TextBlock x:Name="KeepAwakeDetailText"
+                                           Margin="0,3,0,0"
+                                           Text="Off — normal sleep &amp; screen lock"
+                                           FontFamily="{StaticResource NitroFont}"
+                                           FontSize="10.5"
+                                           Foreground="{StaticResource TextMutedBrush}"/>
+                            </StackPanel>
+                            <Button x:Name="KeepAwakeButton"
+                                    Grid.Column="1"
+                                    MinWidth="58"
+                                    VerticalAlignment="Center"
+                                    Content="Start"
+                                    Style="{StaticResource NitroButton}"
+                                    Click="OnToggleKeepAwake"/>
                         </Grid>
-                        <controls:CpuBarsControl x:Name="CpuLargeBars"
-                                                  Height="28"
-                                                  Margin="0,7,0,0"
-                                                  MaxBars="24"
-                                                  BarBrush="{StaticResource CpuCoralBrush}"
-                                                  LatestBarBrush="{StaticResource CpuLatestBrush}"/>
-                        <TextBlock x:Name="CpuCoresText"
-                                   Margin="0,6,0,0"
-                                   Text="0 logical cores"
-                                   FontFamily="{StaticResource NitroFont}"
-                                   FontSize="10.5"
-                                   Foreground="{StaticResource TextMutedBrush}"/>
+
+                        <UniformGrid Margin="0,10,0,0" Columns="5">
+                            <Button x:Name="Preset1hButton" Content="1h" Margin="0,0,4,0" Tag="60" Style="{StaticResource NitroChip}" Click="OnPresetClicked"/>
+                            <Button x:Name="Preset2hButton" Content="2h" Margin="2,0,2,0" Tag="120" Style="{StaticResource NitroChip}" Click="OnPresetClicked"/>
+                            <Button x:Name="Preset4hButton" Content="4h" Margin="2,0,2,0" Tag="240" Style="{StaticResource NitroChip}" Click="OnPresetClicked"/>
+                            <Button x:Name="Preset8hButton" Content="8h" Margin="2,0,2,0" Tag="480" Style="{StaticResource NitroChip}" Click="OnPresetClicked"/>
+                            <Button x:Name="PresetInfiniteButton" Content="∞" Margin="4,0,0,0" Tag="0" ToolTip="Infinite — keep awake until stopped" Style="{StaticResource NitroChip}" Click="OnPresetClicked"/>
+                        </UniformGrid>
+
+                        <ProgressBar x:Name="KeepAwakeProgress"
+                                     Height="3"
+                                     Margin="0,9,0,0"
+                                     Minimum="0"
+                                     Maximum="1"
+                                     Value="0"
+                                     BorderThickness="0"
+                                     Foreground="{StaticResource KaffeAmberBrush}"
+                                     Background="#14FFFFFF"/>
                     </StackPanel>
                 </Border>
 
-                <Border Grid.Column="2"
-                        Padding="11,10"
+                <Border x:Name="QuietModeCard"
+                        Margin="0,12,0,0"
+                        Padding="12"
                         Background="{StaticResource CardBackgroundBrush}"
                         BorderBrush="{StaticResource CardBorderBrush}"
                         BorderThickness="1"
                         CornerRadius="10">
-                    <StackPanel>
-                        <Grid>
-                            <TextBlock Text="MEMORY"
-                                       FontFamily="{StaticResource NitroFont}"
-                                       FontSize="10.5"
-                                       FontWeight="SemiBold"
-                                       Foreground="{StaticResource TextMutedBrush}"/>
-                            <TextBlock x:Name="RamLargeValue"
-                                       HorizontalAlignment="Right"
-                                       Text="0%"
-                                       FontFamily="{StaticResource NitroFont}"
-                                       FontSize="20"
-                                       FontWeight="Bold"
-                                       Typography.NumeralAlignment="Tabular"
-                                       Foreground="{StaticResource RamBlueBrush}"/>
-                        </Grid>
-                        <controls:RamSparklineControl x:Name="RamLargeSparkline"
-                                                       Height="28"
-                                                       Margin="0,7,0,0"
-                                                       StrokeBrush="{StaticResource RamBlueBrush}"
-                                                       FillBrush="{StaticResource RamFillBrush}"
-                                                       GuideBrush="{StaticResource SparkGuideBrush}"
-                                                       LatestPointBrush="{StaticResource RamLatestBrush}"/>
-                        <TextBlock x:Name="RamDetailText"
-                                   Margin="0,6,0,0"
-                                   Text="0.0 / 0.0 GB used"
-                                   FontFamily="{StaticResource NitroFont}"
-                                   FontSize="10.5"
-                                   Typography.NumeralAlignment="Tabular"
-                                   Foreground="{StaticResource TextMutedBrush}"/>
-                    </StackPanel>
-                </Border>
-            </Grid>
-
-            <Border x:Name="KeepAwakeCard"
-                    Margin="0,12,0,0"
-                    Padding="12"
-                    Background="{StaticResource CardBackgroundBrush}"
-                    BorderBrush="{StaticResource CardBorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="10">
-                <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <Viewbox Width="15" Height="15" Margin="0,0,6,0">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Viewbox Width="15" Height="15" Margin="0,0,6,0" VerticalAlignment="Center">
                                     <Canvas Width="24" Height="24">
-                                        <Path Data="M 17,8 H 18 A 4,4 0 1 1 18,16 H 17 M 3,8 H 17 V 17 A 4,4 0 0 1 13,21 H 7 A 4,4 0 0 1 3,17 Z M 6,2 V 4 M 10,2 V 4 M 14,2 V 4"
-                                              Stroke="{StaticResource KaffeAmberBrush}"
-                                              StrokeThickness="2.2"
+                                        <Path Data="M 21,12.79 A 9,9 0 1 1 11.21,3 A 7,7 0 0 0 21,12.79 Z"
+                                              Stroke="{StaticResource RamBlueBrush}"
+                                              StrokeThickness="2.1"
                                               StrokeStartLineCap="Round"
                                               StrokeEndLineCap="Round"
                                               StrokeLineJoin="Round"/>
                                     </Canvas>
                                 </Viewbox>
-                                <TextBlock Text="Keep Awake"
+                                <TextBlock Text="Quiet Mode"
+                                           VerticalAlignment="Center"
                                            FontFamily="{StaticResource NitroFont}"
                                            FontSize="13"
                                            FontWeight="SemiBold"
                                            Foreground="{StaticResource TextPrimaryBrush}"/>
                             </StackPanel>
-                            <TextBlock x:Name="KeepAwakeDetailText"
-                                       Margin="0,2,0,0"
-                                       Text="Paused — normal Windows sleep &amp; idle rules"
+                            <TextBlock x:Name="QuietModeDetailText"
+                                       Margin="0,3,0,0"
+                                       Text="Disables CPU boost to reduce heat &amp; fan noise"
                                        FontFamily="{StaticResource NitroFont}"
                                        FontSize="10.5"
                                        Foreground="{StaticResource TextMutedBrush}"/>
-                        </StackPanel>
-                        <Button x:Name="KeepAwakeButton"
-                                Grid.Column="1"
-                                MinWidth="52"
-                                Content="Start"
-                                Style="{StaticResource NitroButton}"
-                                Click="OnToggleKeepAwake"/>
-                    </Grid>
-
-                    <StackPanel Margin="0,10,0,0" Orientation="Horizontal">
-                        <Button Content="30m" Tag="30" Style="{StaticResource NitroChip}" Click="OnPresetClicked"/>
-                        <Button Content="1h" Margin="5,0,0,0" Tag="60" Style="{StaticResource NitroChip}" Click="OnPresetClicked"/>
-                        <Button Content="2h" Margin="5,0,0,0" Tag="120" Style="{StaticResource NitroChip}" Click="OnPresetClicked"/>
-                        <Button Content="4h" Margin="5,0,0,0" Tag="240" Style="{StaticResource NitroChip}" Click="OnPresetClicked"/>
-                        <Button Content="∞" Margin="5,0,0,0" Tag="0" Style="{StaticResource NitroChip}" Click="OnPresetClicked"/>
-                        <TextBox x:Name="CustomMinutesInput"
-                                 Width="48"
-                                 Height="27"
-                                 Margin="5,0,0,0"
-                                 Padding="4,3"
-                                 Text="60"
-                                 InputScope="Number"
-                                 TextAlignment="Center"
-                                 VerticalContentAlignment="Center"
-                                 FontFamily="{StaticResource NitroFont}"
-                                 FontSize="11.5"
-                                 Foreground="{StaticResource TextPrimaryBrush}"
-                                 Background="#47000000"
-                                 BorderBrush="#1FFFFFFF"
-                                 PreviewKeyDown="OnCustomMinutesKeyDown"/>
-                    </StackPanel>
-
-                    <ProgressBar x:Name="KeepAwakeProgress"
-                                 Height="3"
-                                 Margin="0,9,0,0"
-                                 Minimum="0"
-                                 Maximum="1"
-                                 Value="0"
-                                 BorderThickness="0"
-                                 Foreground="{StaticResource KaffeAmberBrush}"
-                                 Background="#14FFFFFF"/>
-                </StackPanel>
-            </Border>
-
-            <Border x:Name="QuietModeCard"
-                    Margin="0,12,0,0"
-                    Padding="12"
-                    Background="{StaticResource CardBackgroundBrush}"
-                    BorderBrush="{StaticResource CardBorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="10">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel>
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE9DA;"
-                                       Margin="0,0,6,0"
-                                       VerticalAlignment="Center"
-                                       FontFamily="Segoe MDL2 Assets"
-                                       FontSize="14"
-                                       Foreground="{StaticResource RamBlueBrush}"/>
-                            <TextBlock Text="Quiet Mode"
+                            <TextBlock Margin="0,2,0,0"
+                                       Text="Restored automatically when NitroPC exits."
                                        FontFamily="{StaticResource NitroFont}"
-                                       FontSize="13"
-                                       FontWeight="SemiBold"
-                                       Foreground="{StaticResource TextPrimaryBrush}"/>
+                                       FontSize="9.5"
+                                       Foreground="{StaticResource TextMutedBrush}"/>
                         </StackPanel>
-                        <TextBlock x:Name="QuietModeDetailText"
-                                   Margin="0,2,0,0"
-                                   Text="CPU boost on — normal Windows power policy"
+                        <ToggleButton x:Name="QuietModeToggle"
+                                      Grid.Column="1"
+                                      VerticalAlignment="Center"
+                                      Style="{StaticResource NitroToggle}"
+                                      Checked="OnQuietModeChanged"
+                                      Unchecked="OnQuietModeChanged"/>
+                    </Grid>
+                </Border>
+            </StackPanel>
+
+            <StackPanel x:Name="SettingsPanel" Visibility="Collapsed">
+                <TextBlock Margin="2,12,0,6"
+                           Text="TASKBAR DISPLAY"
+                           FontFamily="{StaticResource NitroFont}"
+                           FontSize="10"
+                           FontWeight="Bold"
+                           Foreground="{StaticResource TextMutedBrush}"/>
+
+                <Border Padding="12,10"
+                        Background="{StaticResource CardBackgroundBrush}"
+                        BorderBrush="{StaticResource CardBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="10">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="CPU graph"
+                                       VerticalAlignment="Center"
+                                       FontFamily="{StaticResource NitroFont}"
+                                       FontSize="11.5"
+                                       Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                <Button x:Name="CpuHistoryButton" Content="History" Tag="History" Style="{StaticResource NitroChip}" Click="OnCpuModeClicked"/>
+                                <Button x:Name="CpuCoresButton" Margin="4,0,0,0" Content="Cores" Tag="Cores" Style="{StaticResource NitroChip}" Click="OnCpuModeClicked"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="RAM readout"
+                                       VerticalAlignment="Center"
+                                       FontFamily="{StaticResource NitroFont}"
+                                       FontSize="11.5"
+                                       Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                <Button x:Name="RamPercentButton" Content="%" Tag="Percent" Style="{StaticResource NitroChip}" Click="OnRamModeClicked"/>
+                                <Button x:Name="RamGigabytesButton" Margin="4,0,0,0" Content="GB" Tag="Gigabytes" Style="{StaticResource NitroChip}" Click="OnRamModeClicked"/>
+                                <Button x:Name="RamBothButton" Margin="4,0,0,0" Content="% + GB" Tag="Both" Style="{StaticResource NitroChip}" Click="OnRamModeClicked"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Keep Awake"
+                                       VerticalAlignment="Center"
+                                       FontFamily="{StaticResource NitroFont}"
+                                       FontSize="11.5"
+                                       Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                <Button x:Name="BarBadgeButton" Content="Badge" Tag="Badge" Style="{StaticResource NitroChip}" Click="OnBarModeClicked"/>
+                                <Button x:Name="BarIconButton" Margin="4,0,0,0" Content="Icon" Tag="CompactIcon" Style="{StaticResource NitroChip}" Click="OnBarModeClicked"/>
+                                <Button x:Name="BarHiddenButton" Margin="4,0,0,0" Content="Hide" Tag="Hidden" Style="{StaticResource NitroChip}" Click="OnBarModeClicked"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <TextBlock Margin="2,12,0,6"
+                           Text="SYSTEM &amp; UPDATES"
+                           FontFamily="{StaticResource NitroFont}"
+                           FontSize="10"
+                           FontWeight="Bold"
+                           Foreground="{StaticResource TextMutedBrush}"/>
+
+                <Border Padding="12,10"
+                        Background="{StaticResource CardBackgroundBrush}"
+                        BorderBrush="{StaticResource CardBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="10">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock VerticalAlignment="Center"
+                                       Text="Start with Windows"
+                                       FontFamily="{StaticResource NitroFont}"
+                                       FontSize="11.5"
+                                       Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <ToggleButton x:Name="StartupToggle"
+                                          Grid.Column="1"
+                                          VerticalAlignment="Center"
+                                          Style="{StaticResource NitroToggle}"
+                                          Checked="OnStartupChanged"
+                                          Unchecked="OnStartupChanged"/>
+                        </Grid>
+
+                        <Grid Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock VerticalAlignment="Center"
+                                       Text="Check updates automatically"
+                                       FontFamily="{StaticResource NitroFont}"
+                                       FontSize="11.5"
+                                       Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <ToggleButton x:Name="AutomaticUpdatesToggle"
+                                          Grid.Column="1"
+                                          VerticalAlignment="Center"
+                                          Style="{StaticResource NitroToggle}"
+                                          Checked="OnAutomaticUpdatesChanged"
+                                          Unchecked="OnAutomaticUpdatesChanged"/>
+                        </Grid>
+
+                        <Button Margin="0,10,0,0"
+                                Padding="10,6"
+                                Content="Check for updates"
+                                Style="{StaticResource NitroButton}"
+                                Click="OnCheckUpdatesClicked"/>
+
+                        <TextBlock x:Name="UpdateStatusText"
+                                   Margin="0,7,0,0"
+                                   Visibility="Collapsed"
+                                   Text=""
+                                   TextWrapping="Wrap"
                                    FontFamily="{StaticResource NitroFont}"
                                    FontSize="10.5"
                                    Foreground="{StaticResource TextMutedBrush}"/>
-                        <TextBlock Margin="0,2,0,0"
-                                   Text="Processor boost only. Restored automatically on exit."
-                                   FontFamily="{StaticResource NitroFont}"
-                                   FontSize="9.5"
-                                   Foreground="{StaticResource TextMutedBrush}"/>
-                    </StackPanel>
-                    <ToggleButton x:Name="QuietModeToggle"
-                                  Grid.Column="1"
-                                  VerticalAlignment="Center"
-                                  Style="{StaticResource NitroToggle}"
-                                  Checked="OnQuietModeChanged"
-                                  Unchecked="OnQuietModeChanged"/>
-                </Grid>
-            </Border>
-
-            <StackPanel x:Name="SettingsPanel" Visibility="Collapsed">
-                <TextBlock Margin="2,14,0,6"
-                           Text="Display and app settings"
-                           FontFamily="{StaticResource NitroFont}"
-                           FontSize="11"
-                           FontWeight="SemiBold"
-                           Foreground="{StaticResource TextMutedBrush}"/>
-
-                <Border
-                    Padding="10,8"
-                    Background="{StaticResource CardBackgroundBrush}"
-                    BorderBrush="{StaticResource CardBorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="10">
-                    <StackPanel>
-                        <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="CPU on bar"
-                                   VerticalAlignment="Center"
-                                   FontFamily="{StaticResource NitroFont}"
-                                   FontSize="11"
-                                   Foreground="{StaticResource TextMutedBrush}"/>
-                        <StackPanel Grid.Column="2" Orientation="Horizontal">
-                            <Button x:Name="CpuCoresButton" Content="Cores" Tag="Cores" Style="{StaticResource NitroChip}" Click="OnCpuModeClicked"/>
-                            <Button x:Name="CpuHistoryButton" Margin="4,0,0,0" Content="History" Tag="History" Style="{StaticResource NitroChip}" Click="OnCpuModeClicked"/>
-                        </StackPanel>
-                        </Grid>
-                        <Grid Margin="0,7,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="RAM on bar"
-                                   VerticalAlignment="Center"
-                                   FontFamily="{StaticResource NitroFont}"
-                                   FontSize="11"
-                                   Foreground="{StaticResource TextMutedBrush}"/>
-                        <StackPanel Grid.Column="2" Orientation="Horizontal">
-                            <Button x:Name="RamPercentButton" Content="%" Tag="Percent" Style="{StaticResource NitroChip}" Click="OnRamModeClicked"/>
-                            <Button x:Name="RamGigabytesButton" Margin="4,0,0,0" Content="GB" Tag="Gigabytes" Style="{StaticResource NitroChip}" Click="OnRamModeClicked"/>
-                            <Button x:Name="RamBothButton" Margin="4,0,0,0" Content="% + GB" Tag="Both" Style="{StaticResource NitroChip}" Click="OnRamModeClicked"/>
-                        </StackPanel>
-                        </Grid>
-                        <Grid Margin="0,7,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="Awake on bar"
-                                   VerticalAlignment="Center"
-                                   FontFamily="{StaticResource NitroFont}"
-                                   FontSize="11"
-                                   Foreground="{StaticResource TextMutedBrush}"/>
-                        <StackPanel Grid.Column="2" Orientation="Horizontal">
-                            <Button x:Name="BarBadgeButton" Content="Badge" Tag="Badge" Style="{StaticResource NitroChip}" Click="OnBarModeClicked"/>
-                            <Button x:Name="BarIconButton" Margin="4,0,0,0" Content="Icon" Tag="CompactIcon" Style="{StaticResource NitroChip}" Click="OnBarModeClicked"/>
-                            <Button x:Name="BarHiddenButton" Margin="4,0,0,0" Content="Hide" Tag="Hidden" Style="{StaticResource NitroChip}" Click="OnBarModeClicked"/>
-                        </StackPanel>
-                        </Grid>
                     </StackPanel>
                 </Border>
 
-                <Border Margin="0,12,0,0"
-                        Padding="0,8,0,0"
-                        BorderBrush="{StaticResource CardBorderBrush}"
-                        BorderThickness="0,1,0,0">
-                    <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="6"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Orientation="Horizontal">
-                        <ToggleButton x:Name="StartupToggle"
-                                      Style="{StaticResource NitroToggle}"
-                                      Checked="OnStartupChanged"
-                                      Unchecked="OnStartupChanged"/>
-                        <TextBlock Margin="8,0,0,0"
+                <Button Margin="0,12,0,0"
+                        Padding="10,7"
+                        Background="#1AF3A683"
+                        BorderBrush="#3DF3A683"
+                        Style="{StaticResource NitroButton}"
+                        Click="OnQuitClicked">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Viewbox Width="13" Height="13" Margin="0,0,7,0" VerticalAlignment="Center">
+                            <Canvas Width="24" Height="24">
+                                <Path Data="M 18.36,6.64 A 9,9 0 1 1 5.64,6.64 M 12,2 V 12"
+                                      Stroke="{StaticResource CpuCoralBrush}"
+                                      StrokeThickness="2.2"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round"/>
+                            </Canvas>
+                        </Viewbox>
+                        <TextBlock Text="Quit NitroPC"
                                    VerticalAlignment="Center"
-                                   Text="Start with Windows"
                                    FontFamily="{StaticResource NitroFont}"
-                                   FontSize="11.5"
-                                   Foreground="{StaticResource TextMutedBrush}"/>
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource CpuCoralBrush}"/>
                     </StackPanel>
-                    <Button Grid.Column="1"
-                            Content="Quit NitroPC"
-                            Style="{StaticResource NitroTextButton}"
-                            Click="OnQuitClicked"/>
-
-                    <StackPanel Grid.Row="2" Orientation="Horizontal">
-                        <ToggleButton x:Name="AutomaticUpdatesToggle"
-                                      Style="{StaticResource NitroToggle}"
-                                      Checked="OnAutomaticUpdatesChanged"
-                                      Unchecked="OnAutomaticUpdatesChanged"/>
-                        <TextBlock Margin="8,0,0,0"
-                                   VerticalAlignment="Center"
-                                   Text="Check automatically"
-                                   FontFamily="{StaticResource NitroFont}"
-                                   FontSize="11.5"
-                                   Foreground="{StaticResource TextMutedBrush}"/>
-                    </StackPanel>
-                    <Button Grid.Row="2"
-                            Grid.Column="1"
-                            Content="Check for updates"
-                            Style="{StaticResource NitroTextButton}"
-                            Click="OnCheckUpdatesClicked"/>
-                    </Grid>
-                </Border>
-
-                <TextBlock x:Name="UpdateStatusText"
-                           Margin="0,7,0,0"
-                           Text=""
-                           TextWrapping="Wrap"
-                           FontFamily="{StaticResource NitroFont}"
-                           FontSize="10.5"
-                           Foreground="{StaticResource TextMutedBrush}"/>
+                </Button>
             </StackPanel>
         </StackPanel>
     </Border>

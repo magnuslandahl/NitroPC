@@ -17,19 +17,19 @@ namespace NitroPC.Views;
 
 public sealed partial class ToolboxFlyoutWindow : Window
 {
+    private static readonly int[] SupportedPresets = [60, 120, 240, 480, 0];
     private readonly NitroSettings _settings;
     private MetricsSnapshot? _latestMetrics;
     private NativeMethods.RECT? _lastStripPhysicalRect;
+    private bool _isAwake;
 
     public ToolboxFlyoutWindow(NitroSettings settings)
     {
         _settings = settings;
+        _settings.KeepAwakeMinutes = NormalizePresetMinutes(settings.KeepAwakeMinutes);
         InitializeComponent();
         StartupToggle.IsChecked = new StartupService().IsEnabled();
         AutomaticUpdatesToggle.IsChecked = settings.AutomaticallyCheckForUpdates;
-        CustomMinutesInput.Text = settings.KeepAwakeMinutes <= 0
-            ? "60"
-            : settings.KeepAwakeMinutes.ToString(CultureInfo.InvariantCulture);
         PreviewKeyDown += OnPreviewKeyDown;
         ApplySelectionStyles();
     }
@@ -57,18 +57,20 @@ public sealed partial class ToolboxFlyoutWindow : Window
         ApplyCpuDisplay(metrics);
         RamLargeValue.Text = $"{Math.Round(metrics.RamPercent):0}%";
         RamLargeSparkline.Values = metrics.RamHistoryPercents;
-        RamDetailText.Text = $"{metrics.RamUsedGb:0.0} / {metrics.RamTotalGb:0.0} GB used";
+        RamDetailText.Text = $"{metrics.RamUsedGb:0.0} / {metrics.RamTotalGb:0.0} GB · 60s";
     }
 
     private void ApplyCpuDisplay(MetricsSnapshot metrics)
     {
-        CpuLargeBars.Values = _settings.CpuDisplayMode == CpuDisplayMode.History
+        var history = _settings.CpuDisplayMode == CpuDisplayMode.History;
+        CpuLargeBars.IsHistoryMode = history;
+        CpuLargeBars.HighlightLatestBar = history;
+        CpuLargeBars.Values = history
             ? metrics.CpuHistoryPercents
             : metrics.CpuCorePercents;
-        CpuLargeBars.HighlightLatestBar = _settings.CpuDisplayMode == CpuDisplayMode.History;
-        CpuCoresText.Text = _settings.CpuDisplayMode == CpuDisplayMode.History
-            ? "24-second history"
-            : metrics.LogicalCoreCount > 24
+        CpuCoresText.Text = history
+            ? "60-second history"
+            : metrics.LogicalCoreCount > 30
                 ? $"{metrics.LogicalCoreCount} logical cores, grouped"
                 : $"{metrics.LogicalCoreCount} logical cores";
     }
@@ -76,9 +78,10 @@ public sealed partial class ToolboxFlyoutWindow : Window
     public void UpdateKeepAwake(KeepAwakeService service)
     {
         var awake = service.IsAwake;
+        _isAwake = awake;
         StatusText.Text = awake
             ? service.IsIndefinite
-                ? "Awake · Indefinite (∞)"
+                ? "Awake · ∞"
                 : $"Awake · {FormatCountdown(service.Remaining ?? TimeSpan.Zero)}"
             : "Idle";
         StatusText.Foreground = awake
@@ -95,8 +98,8 @@ public sealed partial class ToolboxFlyoutWindow : Window
             : (Brush)FindResource("CardBorderBrush");
 
         KeepAwakeDetailText.Text = awake
-            ? "Active — prevents sleep, lock & Teams away"
-            : "Paused — normal Windows sleep & idle rules";
+            ? "Prevents sleep, screen lock & screensaver"
+            : "Off — normal sleep & screen lock";
         KeepAwakeButton.Content = awake ? "Stop" : "Start";
         KeepAwakeButton.Background = awake
             ? (Brush)FindResource("KaffeAmberBrush")
@@ -115,6 +118,7 @@ public sealed partial class ToolboxFlyoutWindow : Window
                     (service.Remaining ?? TimeSpan.Zero).TotalSeconds / total.TotalSeconds,
                     0,
                     1);
+        ApplyPresetStyles();
     }
 
     public void SetStartupEnabled(bool enabled)
@@ -135,8 +139,8 @@ public sealed partial class ToolboxFlyoutWindow : Window
         }
 
         QuietModeDetailText.Text = enabled
-            ? "CPU boost off — reduced heat and fan demand"
-            : "CPU boost on — normal Windows power policy";
+            ? "CPU boost off — cooler & quieter"
+            : "Disables CPU boost to reduce heat & fan noise";
         QuietModeCard.BorderBrush = enabled
             ? (Brush)FindResource("RamBlueBrush")
             : (Brush)FindResource("CardBorderBrush");
@@ -145,12 +149,16 @@ public sealed partial class ToolboxFlyoutWindow : Window
     public void SetUpdateStatus(string text)
     {
         UpdateStatusText.Text = text;
+        UpdateStatusText.Visibility = string.IsNullOrWhiteSpace(text)
+            ? Visibility.Collapsed
+            : Visibility.Visible;
     }
 
     internal void ToggleNearStrip(NativeMethods.RECT stripPhysicalRect)
     {
         if (IsVisible)
         {
+            SetSettingsViewVisible(false);
             Hide();
             return;
         }
@@ -160,6 +168,7 @@ public sealed partial class ToolboxFlyoutWindow : Window
             return;
         }
 
+        SetSettingsViewVisible(false);
         _lastStripPhysicalRect = stripPhysicalRect;
         Show();
         UpdateLayout();
@@ -189,6 +198,7 @@ public sealed partial class ToolboxFlyoutWindow : Window
     protected override void OnDeactivated(EventArgs e)
     {
         LastDeactivatedUtc = DateTime.UtcNow;
+        SetSettingsViewVisible(false);
         Hide();
         base.OnDeactivated(e);
     }
@@ -197,7 +207,15 @@ public sealed partial class ToolboxFlyoutWindow : Window
     {
         if (e.Key == Key.Escape)
         {
-            Hide();
+            if (SettingsPanel.Visibility == Visibility.Visible)
+            {
+                SetSettingsViewVisible(false);
+            }
+            else
+            {
+                Hide();
+            }
+
             e.Handled = true;
         }
     }
@@ -210,26 +228,50 @@ public sealed partial class ToolboxFlyoutWindow : Window
             return;
         }
 
-        if (TryReadCustomMinutes(out var minutes))
-        {
-            _settings.KeepAwakeMinutes = minutes;
-            SettingsChanged?.Invoke(_settings);
-            KeepAwakeStartRequested?.Invoke(TimeSpan.FromMinutes(minutes));
-        }
+        var minutes = NormalizePresetMinutes(_settings.KeepAwakeMinutes);
+        _settings.KeepAwakeMinutes = minutes;
+        SettingsChanged?.Invoke(_settings);
+        KeepAwakeStartRequested?.Invoke(minutes == 0 ? null : TimeSpan.FromMinutes(minutes));
+        ApplyPresetStyles();
     }
 
     private void OnSettingsToggle(object sender, RoutedEventArgs e)
     {
-        SettingsPanel.Visibility = SettingsPanel.Visibility == Visibility.Visible
-            ? Visibility.Collapsed
-            : Visibility.Visible;
-        SettingsButton.Background = SettingsPanel.Visibility == Visibility.Visible
+        SetSettingsViewVisible(SettingsPanel.Visibility != Visibility.Visible);
+    }
+
+    private void OnBackToMainClicked(object sender, RoutedEventArgs e)
+    {
+        SetSettingsViewVisible(false);
+    }
+
+    private void SetSettingsViewVisible(bool visible)
+    {
+        MainViewPanel.Visibility = visible ? Visibility.Collapsed : Visibility.Visible;
+        SettingsPanel.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        BrandHeader.Visibility = visible ? Visibility.Collapsed : Visibility.Visible;
+        SettingsHeader.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        StatusChip.Visibility = visible ? Visibility.Collapsed : Visibility.Visible;
+
+        SettingsButton.Background = visible
             ? (Brush)FindResource("RamFillBrush")
-            : WpfBrushes.Transparent;
-        UpdateLayout();
-        if (_lastStripPhysicalRect is { } stripRect)
+            : (Brush)FindResource("CardBackgroundBrush");
+        SettingsButton.BorderBrush = visible
+            ? (Brush)FindResource("RamBlueBrush")
+            : (Brush)FindResource("CardBorderBrush");
+        SettingsIconPath.Stroke = visible
+            ? (Brush)FindResource("TextPrimaryBrush")
+            : (Brush)FindResource("TextMutedBrush");
+
+        if (IsVisible)
         {
-            PositionNearStrip(stripRect);
+            SizeToContent = SizeToContent.Height;
+            InvalidateMeasure();
+            UpdateLayout();
+            if (_lastStripPhysicalRect is { } stripRect)
+            {
+                PositionNearStrip(stripRect);
+            }
         }
     }
 
@@ -238,24 +280,9 @@ public sealed partial class ToolboxFlyoutWindow : Window
         var button = (Button)sender;
         var minutes = int.Parse((string)button.Tag, CultureInfo.InvariantCulture);
         _settings.KeepAwakeMinutes = minutes;
-        CustomMinutesInput.Text = minutes == 0 ? string.Empty : minutes.ToString(CultureInfo.InvariantCulture);
         SettingsChanged?.Invoke(_settings);
         KeepAwakeStartRequested?.Invoke(minutes == 0 ? null : TimeSpan.FromMinutes(minutes));
-        ApplySelectionStyles();
-    }
-
-    private void OnCustomMinutesKeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Key != Key.Enter || !TryReadCustomMinutes(out var minutes))
-        {
-            return;
-        }
-
-        _settings.KeepAwakeMinutes = minutes;
-        SettingsChanged?.Invoke(_settings);
-        KeepAwakeStartRequested?.Invoke(TimeSpan.FromMinutes(minutes));
-        ApplySelectionStyles();
-        e.Handled = true;
+        ApplyPresetStyles();
     }
 
     private void OnRamModeClicked(object sender, RoutedEventArgs e)
@@ -313,25 +340,6 @@ public sealed partial class ToolboxFlyoutWindow : Window
         QuitRequested?.Invoke();
     }
 
-    private bool TryReadCustomMinutes(out int minutes)
-    {
-        var parsed = int.TryParse(
-            CustomMinutesInput.Text,
-            NumberStyles.Integer,
-            CultureInfo.InvariantCulture,
-            out minutes);
-        if (parsed && minutes is >= 1 and <= 1440)
-        {
-            return true;
-        }
-
-        CustomMinutesInput.Text = _settings.KeepAwakeMinutes <= 0
-            ? "60"
-            : _settings.KeepAwakeMinutes.ToString(CultureInfo.InvariantCulture);
-        SetUpdateStatus("Custom duration must be between 1 and 1440 minutes.");
-        return false;
-    }
-
     private void ApplySelectionStyles()
     {
         SetSelected(CpuCoresButton, _settings.CpuDisplayMode == CpuDisplayMode.Cores);
@@ -342,6 +350,38 @@ public sealed partial class ToolboxFlyoutWindow : Window
         SetSelected(BarBadgeButton, _settings.KeepAwakeBarMode == KeepAwakeBarMode.Badge);
         SetSelected(BarIconButton, _settings.KeepAwakeBarMode == KeepAwakeBarMode.CompactIcon);
         SetSelected(BarHiddenButton, _settings.KeepAwakeBarMode == KeepAwakeBarMode.Hidden);
+        ApplyPresetStyles();
+    }
+
+    private void ApplyPresetStyles()
+    {
+        var activeMinutes = NormalizePresetMinutes(_settings.KeepAwakeMinutes);
+        SetPresetSelected(Preset1hButton, activeMinutes == 60);
+        SetPresetSelected(Preset2hButton, activeMinutes == 120);
+        SetPresetSelected(Preset4hButton, activeMinutes == 240);
+        SetPresetSelected(Preset8hButton, activeMinutes == 480);
+        SetPresetSelected(PresetInfiniteButton, activeMinutes == 0);
+    }
+
+    private void SetPresetSelected(Button button, bool selected)
+    {
+        if (!selected)
+        {
+            button.Background = (Brush)FindResource("CardBackgroundBrush");
+            button.Foreground = (Brush)FindResource("TextMutedBrush");
+            button.BorderBrush = (Brush)FindResource("CardBorderBrush");
+            return;
+        }
+
+        button.Background = _isAwake
+            ? (Brush)FindResource("KaffeGlowFillBrush")
+            : (Brush)FindResource("ControlHoverBrush");
+        button.Foreground = _isAwake
+            ? (Brush)FindResource("KaffeValueAwakeBrush")
+            : (Brush)FindResource("TextPrimaryBrush");
+        button.BorderBrush = _isAwake
+            ? (Brush)FindResource("KaffeGlowBorderBrush")
+            : (Brush)FindResource("DividerBrush");
     }
 
     private void SetSelected(Button button, bool selected)
@@ -355,6 +395,18 @@ public sealed partial class ToolboxFlyoutWindow : Window
         button.BorderBrush = selected
             ? (Brush)FindResource("RamBlueBrush")
             : (Brush)FindResource("CardBorderBrush");
+    }
+
+    internal static int NormalizePresetMinutes(int minutes)
+    {
+        if (minutes <= 0)
+        {
+            return 0;
+        }
+
+        return SupportedPresets
+            .Where(preset => preset > 0)
+            .MinBy(preset => Math.Abs(preset - minutes));
     }
 
     private static string FormatCountdown(TimeSpan remaining) =>

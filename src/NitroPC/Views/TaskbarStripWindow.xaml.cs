@@ -1,3 +1,4 @@
+using System.Threading;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
@@ -16,9 +17,12 @@ namespace NitroPC.Views;
 public sealed partial class TaskbarStripWindow : Window
 {
     private readonly DispatcherTimer _dockTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
+    private readonly CancellationTokenSource _obstacleScanCts = new();
     private NitroSettings _settings;
     private NativeMethods.RECT _lastPhysicalBounds;
     private MetricsSnapshot? _latestMetrics;
+    private volatile IReadOnlyList<NativeMethods.RECT> _cachedObstacles = Array.Empty<NativeMethods.RECT>();
+    private volatile bool _initialObstacleScanDone;
 
     public TaskbarStripWindow(NitroSettings settings)
     {
@@ -26,7 +30,7 @@ public sealed partial class TaskbarStripWindow : Window
         InitializeComponent();
         SourceInitialized += OnSourceInitialized;
         SizeChanged += (_, _) => Dock();
-        Closing += (_, _) => _dockTimer.Stop();
+        Closing += OnClosing;
         MouseLeftButtonUp += (_, _) => ToggleFlyoutRequested?.Invoke();
         MouseDown += OnMouseDown;
         MouseRightButtonUp += (_, _) => ContextMenuRequested?.Invoke();
@@ -46,10 +50,7 @@ public sealed partial class TaskbarStripWindow : Window
     public void UpdateMetrics(MetricsSnapshot metrics)
     {
         _latestMetrics = metrics;
-        CpuBars.Values = _settings.CpuDisplayMode == CpuDisplayMode.History
-            ? metrics.CpuHistoryPercents
-            : metrics.CpuCorePercents;
-        CpuBars.HighlightLatestBar = _settings.CpuDisplayMode == CpuDisplayMode.History;
+        ApplyCpuMetrics(metrics, _settings.CpuDisplayMode);
         CpuValue.Text = $"{Math.Round(metrics.CpuTotalPercent):0}%";
         RamSparkline.Values = metrics.RamHistoryPercents;
         RamValue.Text = FormatRamValue(metrics, _settings.RamDisplayMode);
@@ -93,17 +94,25 @@ public sealed partial class TaskbarStripWindow : Window
             _ => 36
         };
 
+        CpuBars.IsHistoryMode = settings.CpuDisplayMode == CpuDisplayMode.History;
+        CpuBars.HighlightLatestBar = settings.CpuDisplayMode == CpuDisplayMode.History;
+
         if (_latestMetrics is not null)
         {
-            CpuBars.Values = settings.CpuDisplayMode == CpuDisplayMode.History
-                ? _latestMetrics.CpuHistoryPercents
-                : _latestMetrics.CpuCorePercents;
-            CpuBars.HighlightLatestBar = settings.CpuDisplayMode == CpuDisplayMode.History;
+            ApplyCpuMetrics(_latestMetrics, settings.CpuDisplayMode);
             RamValue.Text = FormatRamValue(_latestMetrics, settings.RamDisplayMode);
         }
 
         UpdateLayout();
         Dock();
+    }
+
+    private void ApplyCpuMetrics(MetricsSnapshot metrics, CpuDisplayMode mode)
+    {
+        var history = mode == CpuDisplayMode.History;
+        CpuBars.IsHistoryMode = history;
+        CpuBars.HighlightLatestBar = history;
+        CpuBars.Values = history ? metrics.CpuHistoryPercents : metrics.CpuCorePercents;
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e)
@@ -113,7 +122,60 @@ public sealed partial class TaskbarStripWindow : Window
         exStyle |= NativeMethods.WS_EX_TOOLWINDOW | NativeMethods.WS_EX_NOACTIVATE;
         NativeMethods.SetWindowLongPtr(hwnd, NativeMethods.GWL_EXSTYLE, new IntPtr(exStyle));
         _dockTimer.Start();
-        Dispatcher.BeginInvoke(Dock, DispatcherPriority.Loaded);
+        _ = RunObstacleScanLoopAsync(_obstacleScanCts.Token);
+        _ = RevealFallbackAsync(_obstacleScanCts.Token);
+    }
+
+    private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        _dockTimer.Stop();
+        _obstacleScanCts.Cancel();
+        _obstacleScanCts.Dispose();
+    }
+
+    private async Task RevealFallbackAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(350, cancellationToken);
+            if (!_initialObstacleScanDone)
+            {
+                _initialObstacleScanDone = true;
+                Dock();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private async Task RunObstacleScanLoopAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+            do
+            {
+                await Task.Run(() => RefreshCachedObstacles(), cancellationToken);
+                _initialObstacleScanDone = true;
+                _ = Dispatcher.BeginInvoke(Dock, DispatcherPriority.Background);
+            }
+            while (await timer.WaitForNextTickAsync(cancellationToken));
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private void RefreshCachedObstacles()
+    {
+        if (!TryResolveTaskbarRects(out var shellTray, out var shellRect, out var notifyRect))
+        {
+            _cachedObstacles = Array.Empty<NativeMethods.RECT>();
+            return;
+        }
+
+        _cachedObstacles = TaskbarObstacleScanner.Scan(shellTray, shellRect, notifyRect);
     }
 
     private void OnMouseDown(object sender, MouseButtonEventArgs e)
@@ -127,40 +189,13 @@ public sealed partial class TaskbarStripWindow : Window
 
     private void Dock()
     {
-        if (!IsLoaded)
+        if (!IsLoaded || !_initialObstacleScanDone)
         {
             return;
         }
 
         var handle = new WindowInteropHelper(this).Handle;
-        var shellTray = NativeMethods.FindWindow("Shell_TrayWnd", null);
-        var trayNotify = shellTray == IntPtr.Zero
-            ? IntPtr.Zero
-            : NativeMethods.FindWindowEx(shellTray, IntPtr.Zero, "TrayNotifyWnd", null);
-
-        NativeMethods.RECT shellRect;
-        NativeMethods.RECT notifyRect;
-        if (shellTray == IntPtr.Zero ||
-            !NativeMethods.GetWindowRect(shellTray, out shellRect))
-        {
-            var workingArea = WinForms.Screen.PrimaryScreen?.WorkingArea
-                ?? WinForms.Screen.AllScreens[0].WorkingArea;
-            shellRect = new NativeMethods.RECT
-            {
-                Left = workingArea.Left,
-                Top = workingArea.Bottom - 48,
-                Right = workingArea.Right,
-                Bottom = workingArea.Bottom
-            };
-            trayNotify = IntPtr.Zero;
-        }
-
-        if (trayNotify == IntPtr.Zero ||
-            !NativeMethods.GetWindowRect(trayNotify, out notifyRect))
-        {
-            notifyRect = shellRect;
-            notifyRect.Left = shellRect.Right - 160;
-        }
+        TryResolveTaskbarRects(out var shellTray, out var shellRect, out var notifyRect);
 
         var foreground = NativeMethods.GetForegroundWindow();
         if (foreground != IntPtr.Zero &&
@@ -184,32 +219,16 @@ public sealed partial class TaskbarStripWindow : Window
             }
         }
 
-        if (Visibility != Visibility.Visible)
-        {
-            Visibility = Visibility.Visible;
-        }
-
         var dpi = VisualTreeHelper.GetDpi(this);
         var stripWidthPhysical = (int)Math.Ceiling(ActualWidth * dpi.DpiScaleX);
         var stripHeightPhysical = shellRect.Height;
         var marginPhysical = (int)Math.Round(6 * dpi.DpiScaleX);
         var targetY = shellRect.Top;
 
-        var rebar = shellTray == IntPtr.Zero
-            ? IntPtr.Zero
-            : NativeMethods.FindWindowEx(shellTray, IntPtr.Zero, "ReBarWindow32", null);
-        NativeMethods.RECT? rebarRect = null;
-        if (rebar != IntPtr.Zero &&
-            NativeMethods.GetWindowRect(rebar, out var foundRebarRect))
-        {
-            rebarRect = foundRebarRect;
-        }
-
-        var safeX = TaskbarLayout.FindAvailableSlot(
+        var safeX = TaskbarLayout.FindRightAnchoredSlot(
             shellRect,
             notifyRect,
-            rebarRect,
-            CollectTaskbarObstacles(handle, shellTray, shellRect, notifyRect),
+            _cachedObstacles,
             stripWidthPhysical,
             marginPhysical);
         if (safeX is null)
@@ -221,6 +240,16 @@ public sealed partial class TaskbarStripWindow : Window
             }
 
             return;
+        }
+
+        if (Visibility != Visibility.Visible)
+        {
+            Visibility = Visibility.Visible;
+        }
+
+        if (RootBorder.Opacity < 1)
+        {
+            RootBorder.Opacity = 1;
         }
 
         var targetX = safeX.Value;
@@ -244,52 +273,41 @@ public sealed partial class TaskbarStripWindow : Window
         };
     }
 
-    private static IReadOnlyList<NativeMethods.RECT> CollectTaskbarObstacles(
-        IntPtr stripHandle,
-        IntPtr shellTray,
-        NativeMethods.RECT shellRect,
-        NativeMethods.RECT notifyRect)
+    private static bool TryResolveTaskbarRects(
+        out IntPtr shellTray,
+        out NativeMethods.RECT shellRect,
+        out NativeMethods.RECT notifyRect)
     {
-        var obstacles = new List<NativeMethods.RECT>();
-        if (shellTray != IntPtr.Zero)
+        shellRect = default;
+        shellTray = NativeMethods.FindWindow("Shell_TrayWnd", null);
+        var trayNotify = shellTray == IntPtr.Zero
+            ? IntPtr.Zero
+            : NativeMethods.FindWindowEx(shellTray, IntPtr.Zero, "TrayNotifyWnd", null);
+
+        var hasRealShell = shellTray != IntPtr.Zero &&
+            NativeMethods.GetWindowRect(shellTray, out shellRect);
+        if (!hasRealShell)
         {
-            NativeMethods.EnumChildWindows(shellTray, (handle, _) =>
+            var workingArea = WinForms.Screen.PrimaryScreen?.WorkingArea
+                ?? WinForms.Screen.AllScreens[0].WorkingArea;
+            shellRect = new NativeMethods.RECT
             {
-                AddTaskbarObstacle(handle, stripHandle, shellRect, notifyRect, obstacles);
-                return true;
-            }, IntPtr.Zero);
+                Left = workingArea.Left,
+                Top = workingArea.Bottom - 48,
+                Right = workingArea.Right,
+                Bottom = workingArea.Bottom
+            };
+            trayNotify = IntPtr.Zero;
         }
 
-        NativeMethods.EnumWindows((handle, _) =>
+        if (trayNotify == IntPtr.Zero ||
+            !NativeMethods.GetWindowRect(trayNotify, out notifyRect))
         {
-            AddTaskbarObstacle(handle, stripHandle, shellRect, notifyRect, obstacles);
-            return true;
-        }, IntPtr.Zero);
-        return obstacles;
-    }
-
-    private static void AddTaskbarObstacle(
-        IntPtr handle,
-        IntPtr stripHandle,
-        NativeMethods.RECT shellRect,
-        NativeMethods.RECT notifyRect,
-        ICollection<NativeMethods.RECT> obstacles)
-    {
-        if (handle == stripHandle ||
-            !NativeMethods.IsWindowVisible(handle) ||
-            !NativeMethods.GetWindowRect(handle, out var rect) ||
-            rect.Left >= notifyRect.Left ||
-            rect.Right <= shellRect.Left ||
-            rect.Top < shellRect.Top - 4 ||
-            rect.Bottom > shellRect.Bottom + 4 ||
-            rect.Width >= shellRect.Width - 32 ||
-            rect.Width <= 0 ||
-            rect.Height <= 0)
-        {
-            return;
+            notifyRect = shellRect;
+            notifyRect.Left = shellRect.Right - 160;
         }
 
-        obstacles.Add(rect);
+        return hasRealShell;
     }
 
     private static string FormatRamValue(MetricsSnapshot metrics, RamDisplayMode mode) => mode switch

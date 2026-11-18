@@ -17,11 +17,11 @@ public sealed class TrayIconService : IDisposable
         var menu = new WinForms.ContextMenuStrip();
         menu.Items.Add(Item("Open NitroPC Toolbox", () => OpenRequested?.Invoke(), bold: true));
         menu.Items.Add(new WinForms.ToolStripSeparator());
-        menu.Items.Add(Item("Keep Awake — 30m", () => StartKeepAwakeRequested?.Invoke(TimeSpan.FromMinutes(30))));
         menu.Items.Add(Item("Keep Awake — 1h", () => StartKeepAwakeRequested?.Invoke(TimeSpan.FromHours(1))));
         menu.Items.Add(Item("Keep Awake — 2h", () => StartKeepAwakeRequested?.Invoke(TimeSpan.FromHours(2))));
         menu.Items.Add(Item("Keep Awake — 4h", () => StartKeepAwakeRequested?.Invoke(TimeSpan.FromHours(4))));
-        menu.Items.Add(Item("Keep Awake — Indefinite (∞)", () => StartKeepAwakeRequested?.Invoke(null)));
+        menu.Items.Add(Item("Keep Awake — 8h", () => StartKeepAwakeRequested?.Invoke(TimeSpan.FromHours(8))));
+        menu.Items.Add(Item("Keep Awake — Infinite (∞)", () => StartKeepAwakeRequested?.Invoke(null)));
         _stopItem = Item("Stop Keep Awake", () => StopKeepAwakeRequested?.Invoke());
         menu.Items.Add(_stopItem);
         menu.Items.Add(new WinForms.ToolStripSeparator());

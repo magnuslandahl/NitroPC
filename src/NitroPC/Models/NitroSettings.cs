@@ -32,7 +32,7 @@ public sealed class NitroSettings
 
     public bool AutoStartKeepAwakeOnLaunch { get; set; }
 
-    public CpuDisplayMode CpuDisplayMode { get; set; } = CpuDisplayMode.Cores;
+    public CpuDisplayMode CpuDisplayMode { get; set; } = CpuDisplayMode.History;
 
     public RamDisplayMode RamDisplayMode { get; set; } = RamDisplayMode.Percent;
 

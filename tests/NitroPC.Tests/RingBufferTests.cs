@@ -5,17 +5,19 @@ namespace NitroPC.Tests;
 public sealed class RingBufferTests
 {
     [Fact]
-    public void FirstPushEstablishesFlatBaseline()
+    public void FirstPushGrowsProgressivelyInsteadOfPreFilling()
     {
         var buffer = new RingBuffer(4);
 
         buffer.Push(64);
+        Assert.Equal([64], buffer.ToArray());
 
-        Assert.Equal([64, 64, 64, 64], buffer.ToArray());
+        buffer.Push(66);
+        Assert.Equal([64, 66], buffer.ToArray());
     }
 
     [Fact]
-    public void PushesShiftOldestValuesOut()
+    public void PushesShiftOldestValuesOutOnceFull()
     {
         var buffer = new RingBuffer(4);
         buffer.Push(10);

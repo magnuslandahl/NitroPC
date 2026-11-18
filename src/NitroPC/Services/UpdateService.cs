@@ -43,6 +43,13 @@ public sealed class UpdateService : IDisposable
         try
         {
             using var response = await GetAsync(LatestReleaseApi, cancellationToken);
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return UpdateCheckResult.Failure(
+                    "No releases have been published on GitHub yet.",
+                    ReleasePage);
+            }
+
             response.EnsureSuccessStatusCode();
             await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
             using var release = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);

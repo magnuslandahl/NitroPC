@@ -66,20 +66,20 @@ This document defines the exact visual design, layout metrics, colors, icons, an
 ### A. Taskbar Strip (`TaskbarStripWindow`)
 - **Outer Window Height**: Matches taskbar height dynamically (on standard Windows 11 taskbar = `48` DIPs; inner pill height = `36` DIPs, vertically centered, `CornerRadius="7"`, horizontal padding `10,0`).
 - **Width**: `SizeToContent="Width"` with fixed-width metric text columns so changing values never move the neighboring charts.
-- **Dock anchor**: Prefer the first free slot immediately after `ReBarWindow32` rather than immediately beside `TrayNotifyWnd`; Windows 11 renders Weather/Widgets inside a full-width XAML composition window with no separate Win32 bounds.
+- **Dock anchor**: `TaskbarObstacleScanner` queries Windows UI Automation button bounds inside `Shell_TrayWnd` on a background loop so `TaskbarLayout.FindRightAnchoredSlot` places the strip immediately to the left of `Widgets`/Weather and `TrayNotifyWnd` while never overlapping pinned or running app icons.
 - **Horizontal Element Sequence** (gap `10` DIPs between sections):
   1. **CPU Unit**:
-     - `CpuBarsControl`: `Width="50"`, `Height="18"`, up to **24 vertical rounded bars**. The chart is bottom-aligned with the metric readout.
-       - **Cores**: shows logical cores directly; systems with more than 24 logical cores are grouped.
-       - **History**: shows the latest 24 one-second total-CPU samples and highlights the newest bar with `CpuLatestBrush`.
+     - `CpuBarsControl`: `Width="48"`, `Height="18"`, up to **20 vertical rounded bars** on the strip (`30` in the flyout). The chart is bottom-aligned with the metric readout.
+       - **History (default)**: progressively loads 2-second total-CPU samples from right to left and highlights the newest bar with `CpuLatestBrush`.
+       - **Cores**: shows logical cores directly; systems with more logical cores than bar slots are grouped.
      - Stacked Text (`Margin="7,0,0,0"`):
        - Top: `CPU` (`FontSize="9"`, `FontWeight="Bold"`, `Foreground="{StaticResource TextMutedBrush}"`)
        - Bottom: `24%` (`FontSize="13.5"`, `FontWeight="Bold"`, `Foreground="{StaticResource TextPrimaryBrush}"`)
   2. **Divider 1**: `Border` `Width="1"`, `Height="20"`, `Background="{StaticResource DividerBrush}"`.
   3. **RAM Unit**:
-     - `RamSparklineControl`: `Width="44"`, `Height="20"`:
-       - Top dashed horizontal guide line at `Y = 3` (`StrokeThickness = 1`, dash `3,3`, `SparkGuideBrush`).
-       - Smooth polyline of 24 RAM % samples (`0–100%` mapped to `Y = Height - 2` .. `Y = 3`), with the latest point highlighted by `RamLatestBrush`.
+     - `RamSparklineControl`: `Width="44"`, `Height="18"`:
+       - Top dashed horizontal guide line (`StrokeThickness = 1`, dash `3,3`, `SparkGuideBrush`) and subtle bottom baseline.
+       - Right-aligned progressive polyline of 2-second RAM % samples with dynamic Y-windowing (minimum `2.5%` span) and the latest point highlighted by `RamLatestBrush`.
      - Stacked Text (`Margin="7,0,0,0"`):
        - Top: `RAM` (`FontSize="9"`, `FontWeight="Bold"`, `Foreground="{StaticResource TextMutedBrush}"`)
        - Bottom (`RamDisplayMode` setting):
@@ -114,36 +114,36 @@ Use a `Viewbox` (`Width="15" Height="15"`) containing a `Canvas` (`Width="24" He
 ### B. Toolbox Flyout (`ToolboxFlyoutWindow`)
 - **Size**: `Width="352"`, `SizeToContent="Height"`, `CornerRadius="12"`, `Padding="16"`, outer margin `12` (room for subtle drop shadow).
 - **Anchor Position**: `10` DIPs above the top of the Windows taskbar, right-aligned with `TaskbarStripWindow` (clamped to `Screen.WorkingArea` so it never goes off-screen).
-- **Header controls**: Status remains visible beside the title; the settings glyph expands/collapses the secondary settings panel and repositions the flyout above the strip.
+- **Header controls**: Clicking the top-right gear switches the flyout between the main Toolbox view and a dedicated `Settings` view (`← Back   Settings`) rather than appending controls to the bottom.
 - **Sections** (`12` DIP vertical spacing):
   1. **Header Row**:
-     - Left: `24×24` rounded gradient badge (`#FFF3A683` -> `#FF6EC6FF`, bold dark `N`) + `NitroPC Toolbox` (`FontSize="13.5"`, `FontWeight="SemiBold"`).
-     - Right: Status pill (`● Awake · 00:48:19` in amber when active, `● Idle` in muted gray when inactive) and gear button.
+     - Left: `24×24` rounded gradient badge (`#FFF3A683` -> `#FF6EC6FF`, bold dark `N`) + `NitroPC Toolbox` (`FontSize="13.5"`, `FontWeight="SemiBold"`), or `← Back` + `Settings` when viewing settings.
+     - Right: Optically centered status pill (`● Awake · 03:59:59` in amber when active, `● Idle` in muted gray when inactive) and vector gear button.
   2. **2-Column Telemetry Grid** (`Gap = 10` DIPs):
      - **Left Card — CPU Load**:
        - Header: `CPU LOAD` + large coral `24%` (`FontSize="20"`, `FontWeight="Bold"`).
-       - Graph: `CpuBarsControl` (`Height="28"`, up to 24 bars).
-       - Subtitle: `{CoreCount} logical cores` or `24-second history`.
+       - Graph: `CpuBarsControl` (`Height="28"`, up to 30 bars).
+       - Subtitle: `60-second history` (default) or `{CoreCount} logical cores`.
      - **Right Card — Memory**:
        - Header: `MEMORY` + large sky-blue `64%` (`FontSize="20"`, `FontWeight="Bold"`).
-       - Graph: `RamSparklineControl` (`Height="28"`, `24` history samples).
-       - Subtitle: `{UsedGb:0.0} / {TotalGb:0.0} GB used`.
+       - Graph: `RamSparklineControl` (`Height="28"`, up to 30 history samples with dynamic Y-windowing).
+       - Subtitle: `{UsedGb:0.0} / {TotalGb:0.0} GB · 60s`.
   3. **Keep Awake ("Kaffe") Card**:
      - Highlighted border (`KaffeGlowBorderBrush`) when active.
-     - Top row: `☕ Keep Awake` title + status subtitle (`Active — prevents sleep, lock & Teams away` vs `Paused — normal Windows sleep & idle rules`) + **Start / Stop** button (`#FFFBBF24` amber background with dark text `#FF171205` when Awake; subtle `#1AFFFFFF` button with white text when Idle).
-     - Preset row: 5 preset buttons (`30m`, `1h`, `2h`, `4h`, `∞`) + Custom Minutes `TextBox` (`Width="48"`, integer `1..1440`, pressing `Enter` or clicking `Start` applies custom minutes and saves to settings). Clicking any preset immediately starts Keep Awake for that duration!
+     - Top row: `☕ Keep Awake` title + status subtitle (`Prevents sleep, screen lock & screensaver` vs `Off — normal sleep & screen lock`) + **Start / Stop** button (`#FFFBBF24` amber background with dark text `#FF171205` when Awake; subtle `#1AFFFFFF` button with white text when Idle).
+     - Preset row: 5 equal-width preset buttons (`1h`, `2h`, `4h`, `8h`, `∞`). Clicking any preset immediately starts Keep Awake for that duration!
      - Countdown progress bar (`Height="3"`, fills proportionally `remaining / total`, `100%` when `∞`, `0%` when Idle).
   4. **Quiet Mode Card**:
-     - Toggle temporarily disables Windows processor boost on AC and battery power.
+     - Vector crescent-moon icon + toggle temporarily disabling Windows processor boost on AC and battery power.
      - Copy explicitly describes processor boost only and automatic restoration on exit; NitroPC does not claim OEM fan-speed control.
-  5. **Settings / Display Panel (header gear)**:
-     - Compact segmented selector or cycle pills for:
-       - **CPU on Bar**: `Cores` | `History`
-       - **RAM on Bar**: `%` | `GB` | `% + GB`
-       - **Awake on Bar**: `Badge` | `Icon` | `Hide`
-  6. **Footer (inside settings panel)**:
-     - Windows 11-style switches for **Start with Windows** and automatic update checks.
-     - **Check for updates** and clear **Quit NitroPC** actions.
+  5. **Settings View (switched via header gear)**:
+     - **TASKBAR DISPLAY** card:
+       - **CPU graph**: `History` | `Cores` (`History` default)
+       - **RAM readout**: `%` | `GB` | `% + GB`
+       - **Keep Awake**: `Badge` | `Icon` | `Hide`
+     - **SYSTEM & UPDATES** card:
+       - **Start with Windows** and **Check updates automatically** switches + **Check for updates** button.
+     - **Footer**: Prominent **Quit NitroPC** power button.
 
 ---
 

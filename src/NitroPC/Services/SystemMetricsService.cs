@@ -9,17 +9,21 @@ namespace NitroPC.Services;
 
 public sealed class SystemMetricsService : IDisposable
 {
+    public const int HistoryCapacity = 30;
+    public const int SampleIntervalSeconds = 2;
+
     private readonly DispatcherTimer _timer;
-    private readonly RingBuffer _cpuHistory = new(24);
-    private readonly RingBuffer _ramHistory = new(24);
+    private readonly RingBuffer _cpuHistory = new(HistoryCapacity);
+    private readonly RingBuffer _ramHistory = new(HistoryCapacity);
     private NativeMethods.SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION[]? _previous;
+    private bool _priming;
     private bool _disposed;
 
     public SystemMetricsService()
     {
         _timer = new DispatcherTimer
         {
-            Interval = TimeSpan.FromSeconds(1)
+            Interval = TimeSpan.FromSeconds(SampleIntervalSeconds)
         };
         _timer.Tick += TimerOnTick;
     }
@@ -36,19 +40,28 @@ public sealed class SystemMetricsService : IDisposable
             return;
         }
 
-        Sample();
+        _previous = ReadProcessorInformation();
+        _priming = true;
+        _timer.Interval = TimeSpan.FromMilliseconds(250);
         _timer.Start();
     }
 
     public void Stop()
     {
         _timer.Stop();
+        _priming = false;
     }
 
     private void TimerOnTick(object? sender, EventArgs e)
     {
         try
         {
+            if (_priming)
+            {
+                _priming = false;
+                _timer.Interval = TimeSpan.FromSeconds(SampleIntervalSeconds);
+            }
+
             Sample();
         }
         catch (InvalidOperationException exception)
