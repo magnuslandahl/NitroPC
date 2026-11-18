@@ -1,0 +1,79 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <SolidColorBrush x:Key="StripBackgroundBrush" Color="#D9233840"/>
+    <SolidColorBrush x:Key="StripHoverBrush" Color="#EB304A54"/>
+    <SolidColorBrush x:Key="StripBorderBrush" Color="#1AFFFFFF"/>
+    <SolidColorBrush x:Key="FlyoutBackgroundBrush" Color="#F518242B"/>
+    <SolidColorBrush x:Key="FlyoutBorderBrush" Color="#24FFFFFF"/>
+    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#0DFFFFFF"/>
+    <SolidColorBrush x:Key="CardBorderBrush" Color="#12FFFFFF"/>
+    <SolidColorBrush x:Key="DividerBrush" Color="#29FFFFFF"/>
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#FFF3F7F9"/>
+    <SolidColorBrush x:Key="TextMutedBrush" Color="#FF97AEB7"/>
+    <SolidColorBrush x:Key="CpuCoralBrush" Color="#FFF3A683"/>
+    <SolidColorBrush x:Key="RamBlueBrush" Color="#FF6EC6FF"/>
+    <SolidColorBrush x:Key="RamFillBrush" Color="#406EC6FF"/>
+    <SolidColorBrush x:Key="SparkGuideBrush" Color="#33FFFFFF"/>
+    <SolidColorBrush x:Key="KaffeAmberBrush" Color="#FFFBBF24"/>
+    <SolidColorBrush x:Key="KaffeGlowFillBrush" Color="#2EFBBF24"/>
+    <SolidColorBrush x:Key="KaffeGlowBorderBrush" Color="#59FBBF24"/>
+    <SolidColorBrush x:Key="KaffeLabelAwakeBrush" Color="#FFFCD34D"/>
+    <SolidColorBrush x:Key="KaffeValueAwakeBrush" Color="#FFFEF3C7"/>
+    <SolidColorBrush x:Key="KaffeIdleIconBrush" Color="#FF7E969F"/>
+    <SolidColorBrush x:Key="ControlHoverBrush" Color="#1AFFFFFF"/>
+    <SolidColorBrush x:Key="ControlPressedBrush" Color="#29FFFFFF"/>
+
+    <FontFamily x:Key="NitroFont">Segoe UI Variable Display, Segoe UI</FontFamily>
+
+    <Style x:Key="NitroButton" TargetType="Button">
+        <Setter Property="FontFamily" Value="{StaticResource NitroFont}"/>
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+        <Setter Property="Background" Value="#1AFFFFFF"/>
+        <Setter Property="BorderBrush" Value="#14FFFFFF"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="12,6"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="7"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{StaticResource ControlHoverBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{StaticResource ControlPressedBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.5"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="NitroChip" TargetType="Button" BasedOn="{StaticResource NitroButton}">
+        <Setter Property="Padding" Value="8,4"/>
+        <Setter Property="MinWidth" Value="32"/>
+        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+        <Setter Property="Background" Value="{StaticResource CardBackgroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+
+    <Style x:Key="NitroTextButton" TargetType="Button" BasedOn="{StaticResource NitroButton}">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+        <Setter Property="Padding" Value="6,4"/>
+    </Style>
+</ResourceDictionary>
