@@ -25,6 +25,7 @@ NitroPC/
 ├── README.md
 ├── .gitignore
 ├── docs/
+│   ├── AUTO_UPDATE.md
 │   ├── IMPLEMENTATION_PLAN.md
 │   ├── UI_SPEC.md
 │   ├── ui-preview.html
@@ -39,7 +40,8 @@ NitroPC/
 │       │   └── NativeMethods.cs
 │       ├── Models/
 │       │   ├── NitroSettings.cs
-│       │   └── MetricsSnapshot.cs
+│       │   ├── MetricsSnapshot.cs
+│       │   └── UpdateCheckResult.cs
 │       ├── Helpers/
 │       │   ├── CpuCalculator.cs
 │       │   └── RingBuffer.cs
@@ -48,6 +50,7 @@ NitroPC/
 │       │   ├── StartupService.cs
 │       │   ├── SystemMetricsService.cs
 │       │   ├── KeepAwakeService.cs
+│       │   ├── UpdateService.cs
 │       │   └── TrayIconService.cs
 │       ├── Controls/
 │       │   ├── CpuBarsControl.cs
@@ -59,6 +62,9 @@ NitroPC/
 │           ├── TaskbarStripWindow.xaml.cs
 │           ├── ToolboxFlyoutWindow.xaml
 │           └── ToolboxFlyoutWindow.xaml.cs
+│   └── NitroPC.Updater/
+│       ├── NitroPC.Updater.csproj
+│       └── Program.cs
 └── tests/
     └── NitroPC.Tests/
         ├── NitroPC.Tests.csproj
@@ -532,7 +538,23 @@ Custom lightweight `FrameworkElement` (`Values` (`IReadOnlyList<double>`), `Stro
   - Show `TaskbarStripWindow` and start `SystemMetricsService`.
   - On `Exit`: dispose `TrayIconService`, `KeepAwakeService` (ensuring `SetThreadExecutionState(ES_CONTINUOUS)` is restored!), `SystemMetricsService`, and release the `Mutex`.
 
-### Step 7.2 — Final Build, Test & Smoke Verification Checklist
+### Step 7.2 — Verified GitHub Release Updates
+
+- Add `Services/UpdateService.cs` using the GitHub latest-release API, without a
+  GitHub token or runtime NuGet updater package.
+- Bind checks to immutable release/asset IDs, require exactly one checksum
+  manifest, select the exact Windows architecture, verify size + SHA-256, and
+  reject unsafe ZIP paths.
+- Add the separate `NitroPC.Updater` project. The WPF process copies this helper
+  to a temporary directory, shuts down, and the helper waits for the old process
+  to exit, replaces the install directory, restores a backup on failure, and
+  relaunches NitroPC.
+- Publish `NitroPC-win-x64.zip`, `NitroPC-win-arm64.zip`, and
+  `SHA256SUMS.txt` from `.github/workflows/release.yml`.
+- Test semantic versions, asset/checksum matching, untrusted manifest behavior,
+  and ZIP path traversal without making release-network calls.
+
+### Step 7.3 — Final Build, Test & Smoke Verification Checklist
 1. Build in both Debug and Release:
    ```powershell
    dotnet build NitroPC.sln -c Release

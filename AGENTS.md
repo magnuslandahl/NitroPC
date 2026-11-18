@@ -53,3 +53,13 @@
    - Set `ShutdownMode="OnExplicitShutdown"` in `App.xaml` and do **NOT** set `StartupUri` (create windows in `App.OnStartup`).
    - Record `_lastDeactivatedUtc = DateTime.UtcNow` when `ToolboxFlyoutWindow.Deactivated` fires and ignore strip clicks within `180ms` if the flyout just closed on deactivation, preventing the flyout from immediately reopening when clicking the taskbar strip to close it.
    - Always reset `SetThreadExecutionState(ES_CONTINUOUS)` and dispose `NotifyIcon` on `Application.Exit`.
+
+7. **Update Package Integrity & Replacement**:
+   - Select only the exact architecture-specific ZIP and exactly one
+     `SHA256SUMS.txt` entry from `magnuslandahl/NitroPC` GitHub release assets.
+   - Bind downloads to immutable numeric GitHub asset IDs, verify the declared
+     size and SHA-256, and reject unsafe ZIP paths.
+   - Run the copied `NitroPC.Updater.exe` from a temporary directory only after
+     NitroPC exits; never replace locked files from the main WPF process.
+   - Keep [`docs/AUTO_UPDATE.md`](docs/AUTO_UPDATE.md) aligned with release
+     packaging and updater behavior.

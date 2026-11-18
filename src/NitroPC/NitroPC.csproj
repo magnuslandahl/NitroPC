@@ -11,10 +11,26 @@
     <AssemblyName>NitroPC</AssemblyName>
     <RootNamespace>NitroPC</RootNamespace>
     <NoWarn>$(NoWarn);WFO0003</NoWarn>
+    <Version>0.1.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="NitroPC.Tests" />
+    <ProjectReference Include="..\NitroPC.Updater\NitroPC.Updater.csproj"
+                      ReferenceOutputAssembly="false"
+                      Private="false"/>
   </ItemGroup>
+
+  <Target Name="CopyNitroUpdater" AfterTargets="Build">
+    <ItemGroup>
+      <NitroUpdaterFiles Include="..\NitroPC.Updater\bin\$(Configuration)\net10.0-windows\NitroPC.Updater.exe"/>
+      <NitroUpdaterFiles Include="..\NitroPC.Updater\bin\$(Configuration)\net10.0-windows\NitroPC.Updater.dll"/>
+      <NitroUpdaterFiles Include="..\NitroPC.Updater\bin\$(Configuration)\net10.0-windows\NitroPC.Updater.deps.json"/>
+      <NitroUpdaterFiles Include="..\NitroPC.Updater\bin\$(Configuration)\net10.0-windows\NitroPC.Updater.runtimeconfig.json"/>
+    </ItemGroup>
+    <Copy SourceFiles="@(NitroUpdaterFiles)"
+          DestinationFolder="$(TargetDir)"
+          SkipUnchangedFiles="true"/>
+  </Target>
 
 </Project>
