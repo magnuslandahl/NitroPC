@@ -8,7 +8,9 @@ public sealed class TrayIconService : IDisposable
 {
     private readonly WinForms.NotifyIcon _notifyIcon = new();
     private readonly WinForms.ToolStripMenuItem _stopItem;
-    private readonly WinForms.ToolStripMenuItem _quietModeItem;
+    private readonly WinForms.ToolStripMenuItem _quietOffItem;
+    private readonly WinForms.ToolStripMenuItem _quietAutoItem;
+    private readonly WinForms.ToolStripMenuItem _quietAlwaysItem;
     private readonly WinForms.ToolStripMenuItem _startupItem;
     private bool _disposed;
 
@@ -25,13 +27,12 @@ public sealed class TrayIconService : IDisposable
         _stopItem = Item("Stop Keep Awake", () => StopKeepAwakeRequested?.Invoke());
         menu.Items.Add(_stopItem);
         menu.Items.Add(new WinForms.ToolStripSeparator());
-        _quietModeItem = Item("Quiet Mode — Disable CPU boost", () =>
-        {
-            var enabled = _quietModeItem is not { Checked: true };
-            QuietModeChangedRequested?.Invoke(enabled);
-        });
-        _quietModeItem.CheckOnClick = false;
-        menu.Items.Add(_quietModeItem);
+        _quietOffItem = Item("Quiet Mode — Off", () => QuietModeChangedRequested?.Invoke(Models.QuietModeLevel.Off));
+        _quietAutoItem = Item("Quiet Mode — Auto (by CPU temp)", () => QuietModeChangedRequested?.Invoke(Models.QuietModeLevel.Auto));
+        _quietAlwaysItem = Item("Quiet Mode — Always Quiet", () => QuietModeChangedRequested?.Invoke(Models.QuietModeLevel.Quiet));
+        menu.Items.Add(_quietOffItem);
+        menu.Items.Add(_quietAutoItem);
+        menu.Items.Add(_quietAlwaysItem);
         menu.Items.Add(new WinForms.ToolStripSeparator());
         _startupItem = Item("Start with Windows", () =>
         {
@@ -58,7 +59,7 @@ public sealed class TrayIconService : IDisposable
 
     public event Action? StopKeepAwakeRequested;
 
-    public event Action<bool>? QuietModeChangedRequested;
+    public event Action<Models.QuietModeLevel>? QuietModeChangedRequested;
 
     public event Action<bool>? StartupChangedRequested;
 
@@ -84,9 +85,11 @@ public sealed class TrayIconService : IDisposable
         _startupItem.Checked = enabled;
     }
 
-    public void SetQuietModeEnabled(bool enabled)
+    public void SetQuietMode(Models.QuietModeLevel mode)
     {
-        _quietModeItem.Checked = enabled;
+        _quietOffItem.Checked = mode == Models.QuietModeLevel.Off;
+        _quietAutoItem.Checked = mode == Models.QuietModeLevel.Auto;
+        _quietAlwaysItem.Checked = mode == Models.QuietModeLevel.Quiet;
     }
 
     public void ShowContextMenu()

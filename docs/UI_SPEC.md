@@ -122,25 +122,32 @@ Use a `Viewbox` (`Width="15" Height="15"`) containing a `Canvas` (`Width="24" He
   2. **2-Column Telemetry Grid** (`Gap = 10` DIPs):
      - **Left Card — CPU Load**:
        - Header: `CPU LOAD` + large coral `24%` (`FontSize="20"`, `FontWeight="Bold"`).
-       - Graph: `CpuBarsControl` (`Height="28"`, up to 30 bars).
+       - Live sensors line: `{FrequencyGhz:0.00} GHz · {TempC:0}°C`.
+       - Graph: `CpuBarsControl` (`Height="26"`, up to 30 bars).
        - Subtitle: `60-second history` (default) or `{CoreCount} logical cores`.
      - **Right Card — Memory**:
        - Header: `MEMORY` + large sky-blue `64%` (`FontSize="20"`, `FontWeight="Bold"`).
-       - Graph: `RamSparklineControl` (`Height="28"`, up to 30 history samples with dynamic Y-windowing).
-       - Subtitle: `{UsedGb:0.0} / {TotalGb:0.0} GB · 60s`.
-  3. **Keep Awake ("Kaffe") Card**:
+       - Live usage line: `{UsedGb:0.0} / {TotalGb:0.0} GB`.
+       - Graph: `RamSparklineControl` (`Height="26"`, up to 30 history samples with dynamic Y-windowing).
+       - Subtitle: `60-second history`.
+  3. **Top CPU Processes Card**:
+     - Displays the top 5 most CPU-intensive processes (`NtQuerySystemInformation(SystemProcessInformation)`), grouping multi-process apps (`msedge (4)`), with proportional coral activity bars and tabular `%`.
+  4. **Keep Awake ("Kaffe") Card**:
      - Highlighted border (`KaffeGlowBorderBrush`) when active.
      - Top row: `☕ Keep Awake` title + status subtitle (`Prevents sleep, screen lock & screensaver` vs `Off — normal sleep & screen lock`) + **Start / Stop** button (`#FFFBBF24` amber background with dark text `#FF171205` when Awake; subtle `#1AFFFFFF` button with white text when Idle).
      - Preset row: 5 equal-width preset buttons (`1h`, `2h`, `4h`, `8h`, `∞`). Clicking any preset immediately starts Keep Awake for that duration!
      - Countdown progress bar (`Height="3"`, fills proportionally `remaining / total`, `100%` when `∞`, `0%` when Idle).
-  4. **Quiet Mode Card**:
-     - Vector crescent-moon icon + toggle temporarily disabling Windows processor boost on AC and battery power.
-     - Copy explicitly describes processor boost only and automatic restoration on exit; NitroPC does not claim OEM fan-speed control.
-  5. **Settings View (switched via header gear)**:
+  5. **Quiet Mode Card (`Off` | `Auto` | `Quiet`)**:
+     - Vector crescent-moon icon + 3-state segmented selector:
+       - `Off`: normal Windows CPU boost.
+       - `Auto`: disables boost when CPU temperature reaches the configured threshold (`70°C` / `75°C` / `80°C`) and restores boost after cooling down (`10°C` hysteresis + 15s minimum hold).
+       - `Quiet`: always disables Windows processor boost on AC and battery power while active.
+  6. **Settings View (switched via header gear)**:
      - **TASKBAR DISPLAY** card:
        - **CPU graph**: `History` | `Cores` (`History` default)
        - **RAM readout**: `%` | `GB` | `% + GB`
        - **Keep Awake**: `Badge` | `Icon` | `Hide`
+       - **Auto Quiet limit**: `70°C` | `75°C` | `80°C`
      - **SYSTEM & UPDATES** card:
        - **Start with Windows** and **Check updates automatically** switches + **Check for updates** button.
      - **Footer**: Prominent **Quit NitroPC** power button.

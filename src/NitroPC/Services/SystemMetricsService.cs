@@ -15,6 +15,8 @@ public sealed class SystemMetricsService : IDisposable
     private readonly DispatcherTimer _timer;
     private readonly RingBuffer _cpuHistory = new(HistoryCapacity);
     private readonly RingBuffer _ramHistory = new(HistoryCapacity);
+    private readonly CpuSensorReader _sensorReader = new();
+    private readonly ProcessCpuSampler _processSampler = new();
     private NativeMethods.SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION[]? _previous;
     private bool _priming;
     private bool _disposed;
@@ -41,6 +43,7 @@ public sealed class SystemMetricsService : IDisposable
         }
 
         _previous = ReadProcessorInformation();
+        _processSampler.PrimeBaseline();
         _priming = true;
         _timer.Interval = TimeSpan.FromMilliseconds(250);
         _timer.Start();
@@ -82,8 +85,14 @@ public sealed class SystemMetricsService : IDisposable
         var usage = _previous is null
             ? (TotalPercent: 0.0, CorePercents: new double[current.Length])
             : CpuCalculator.ComputeUsage(_previous, current);
+        var totalSystemTicks = _previous is null
+            ? 0L
+            : CpuCalculator.ComputeTotalSystemTicks(_previous, current);
         _previous = current;
         _cpuHistory.Push(usage.TotalPercent);
+
+        var (frequencyGhz, temperatureCelsius) = _sensorReader.Read(usage.CorePercents);
+        var topProcesses = _processSampler.SampleTopProcesses(totalSystemTicks, maxItems: 5);
 
         var memory = new NativeMethods.MEMORYSTATUSEX
         {
@@ -107,6 +116,9 @@ public sealed class SystemMetricsService : IDisposable
             usage.CorePercents,
             _cpuHistory.ToArray(),
             usage.CorePercents.Length,
+            frequencyGhz,
+            temperatureCelsius,
+            topProcesses,
             ramPercent,
             usedBytes / 1024.0 / 1024.0 / 1024.0,
             memory.ullTotalPhys / 1024.0 / 1024.0 / 1024.0,
@@ -140,6 +152,8 @@ public sealed class SystemMetricsService : IDisposable
 
         Stop();
         _timer.Tick -= TimerOnTick;
+        _sensorReader.Dispose();
+        _processSampler.Dispose();
         _disposed = true;
     }
 }

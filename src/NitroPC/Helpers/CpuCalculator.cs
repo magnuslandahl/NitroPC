@@ -37,6 +37,25 @@ internal static class CpuCalculator
         return (totalPercent, corePercents);
     }
 
+    public static long ComputeTotalSystemTicks(
+        NativeMethods.SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION[] previous,
+        NativeMethods.SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION[] current)
+    {
+        ArgumentNullException.ThrowIfNull(previous);
+        ArgumentNullException.ThrowIfNull(current);
+
+        var count = Math.Min(previous.Length, current.Length);
+        long totalTime = 0;
+        for (var index = 0; index < count; index++)
+        {
+            var dKernel = Math.Max(0, current[index].KernelTime - previous[index].KernelTime);
+            var dUser = Math.Max(0, current[index].UserTime - previous[index].UserTime);
+            totalTime += dKernel + dUser;
+        }
+
+        return totalTime;
+    }
+
     public static double[] DownsampleBars(IReadOnlyList<double> corePercents, int targetBars)
     {
         ArgumentNullException.ThrowIfNull(corePercents);

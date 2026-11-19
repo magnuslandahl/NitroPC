@@ -18,6 +18,8 @@ public sealed class SettingsServiceTests
             KeepAwakeBarMode = KeepAwakeBarMode.CompactIcon,
             AutoStartKeepAwakeOnLaunch = true,
             AutomaticallyCheckForUpdates = false,
+            QuietMode = QuietModeLevel.Auto,
+            AutoQuietThresholdCelsius = 80,
             QuietModeRecoveryState = new QuietModeRecoveryState(Guid.NewGuid(), 2, 4)
         };
 
@@ -30,6 +32,8 @@ public sealed class SettingsServiceTests
         Assert.Equal(expected.KeepAwakeBarMode, actual.KeepAwakeBarMode);
         Assert.Equal(expected.AutoStartKeepAwakeOnLaunch, actual.AutoStartKeepAwakeOnLaunch);
         Assert.Equal(expected.AutomaticallyCheckForUpdates, actual.AutomaticallyCheckForUpdates);
+        Assert.Equal(expected.QuietMode, actual.QuietMode);
+        Assert.Equal(expected.AutoQuietThresholdCelsius, actual.AutoQuietThresholdCelsius);
         Assert.Equal(expected.QuietModeRecoveryState, actual.QuietModeRecoveryState);
     }
 
