@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using NitroPC.Interop;
 using NitroPC.Models;
 using NitroPC.Services;
@@ -24,6 +25,9 @@ public sealed partial class ToolboxFlyoutWindow : Window
         Border BarFill,
         TextBlock PercentText);
 
+    private const double CollapsedCardOuterWidthDip = 384.0; // 8 left margin + 368 card + 8 right shadow
+    private const double SettingsDrawerExpandedWidthDip = 300.0;
+
     private static readonly int[] SupportedPresets = [60, 120, 240, 480, 0];
     private static readonly int[] SupportedThresholds = [70, 75, 80];
     private readonly NitroSettings _settings;
@@ -33,6 +37,7 @@ public sealed partial class ToolboxFlyoutWindow : Window
     private QuietModeLevel _quietModeLevel;
     private bool _isBoostDisabled;
     private bool _isAwake;
+    private bool _isSettingsOpen;
 
     public ToolboxFlyoutWindow(NitroSettings settings)
     {
@@ -42,7 +47,9 @@ public sealed partial class ToolboxFlyoutWindow : Window
         _quietModeLevel = settings.QuietMode;
         InitializeComponent();
         InitializeProcessRows();
-        VersionText.Text = $"v{UpdateService.CurrentVersionText}";
+        var versionLabel = $"v{UpdateService.CurrentVersionText}";
+        HeaderVersionText.Text = versionLabel;
+        VersionText.Text = versionLabel;
         StartupToggle.IsChecked = new StartupService().IsEnabled();
         AutomaticUpdatesToggle.IsChecked = settings.AutomaticallyCheckForUpdates;
         PreviewKeyDown += OnPreviewKeyDown;
@@ -119,23 +126,13 @@ public sealed partial class ToolboxFlyoutWindow : Window
     {
         var awake = service.IsAwake;
         _isAwake = awake;
-        StatusText.Text = awake
-            ? service.IsIndefinite
+        StatusChip.Visibility = awake ? Visibility.Visible : Visibility.Collapsed;
+        if (awake)
+        {
+            StatusText.Text = service.IsIndefinite
                 ? "Awake · ∞"
-                : $"Awake · {FormatCountdown(service.Remaining ?? TimeSpan.Zero)}"
-            : "Idle";
-        StatusText.Foreground = awake
-            ? (Brush)FindResource("KaffeLabelAwakeBrush")
-            : (Brush)FindResource("TextMutedBrush");
-        StatusDot.Fill = awake
-            ? (Brush)FindResource("KaffeAmberBrush")
-            : (Brush)FindResource("TextMutedBrush");
-        StatusChip.Background = awake
-            ? (Brush)FindResource("KaffeGlowFillBrush")
-            : (Brush)FindResource("CardBackgroundBrush");
-        StatusChip.BorderBrush = awake
-            ? (Brush)FindResource("KaffeGlowBorderBrush")
-            : (Brush)FindResource("CardBorderBrush");
+                : $"Awake · {FormatCountdown(service.Remaining ?? TimeSpan.Zero)}";
+        }
 
         KeepAwakeDetailText.Text = awake
             ? "Prevents sleep, screen lock & screensaver"
@@ -218,7 +215,7 @@ public sealed partial class ToolboxFlyoutWindow : Window
     {
         if (IsVisible)
         {
-            SetSettingsViewVisible(false);
+            SetSettingsDrawerOpen(false, animate: false);
             Hide();
             return;
         }
@@ -228,37 +225,58 @@ public sealed partial class ToolboxFlyoutWindow : Window
             return;
         }
 
-        SetSettingsViewVisible(false);
+        SetSettingsDrawerOpen(false, animate: false);
         _lastStripPhysicalRect = stripPhysicalRect;
         Show();
         UpdateLayout();
-        PositionNearStrip(stripPhysicalRect);
+        PositionNearStrip(stripPhysicalRect, animateHorizontal: false);
         Activate();
     }
 
-    private void PositionNearStrip(NativeMethods.RECT stripPhysicalRect)
+    private void PositionNearStrip(NativeMethods.RECT stripPhysicalRect, bool animateHorizontal = false)
     {
         var dpi = VisualTreeHelper.GetDpi(this);
-        var widthPhysical = (int)Math.Ceiling(ActualWidth * dpi.DpiScaleX);
+        var visualWidthDip = CollapsedCardOuterWidthDip +
+            (_isSettingsOpen ? SettingsDrawerExpandedWidthDip : 0.0);
+        var collapsedWidthPhysical = (int)Math.Ceiling(CollapsedCardOuterWidthDip * dpi.DpiScaleX);
+        var activeWidthPhysical = (int)Math.Ceiling(visualWidthDip * dpi.DpiScaleX);
         var heightPhysical = (int)Math.Ceiling(ActualHeight * dpi.DpiScaleY);
         var screenPoint = new System.Drawing.Point(stripPhysicalRect.Right, stripPhysicalRect.Top);
         var screen = WinForms.Screen.FromPoint(screenPoint);
         var marginPhysical = (int)Math.Round(8 * dpi.DpiScaleX);
-        var x = stripPhysicalRect.Right - widthPhysical;
-        var y = stripPhysicalRect.Top - heightPhysical - (int)Math.Round(10 * dpi.DpiScaleY);
 
-        x = Math.Max(screen.WorkingArea.Left + marginPhysical,
-            Math.Min(x, screen.WorkingArea.Right - widthPhysical - marginPhysical));
-        y = Math.Max(screen.WorkingArea.Top + marginPhysical, y);
+        // Anchor the main Toolbox column above the strip so opening Settings expands cleanly to the right,
+        // shifting left only if the expanded drawer would cross the monitor's right edge.
+        var baseX = stripPhysicalRect.Right - collapsedWidthPhysical;
+        var x = Math.Max(
+            screen.WorkingArea.Left + marginPhysical,
+            Math.Min(baseX, screen.WorkingArea.Right - activeWidthPhysical - marginPhysical));
+        var y = Math.Max(
+            screen.WorkingArea.Top + marginPhysical,
+            stripPhysicalRect.Top - heightPhysical - (int)Math.Round(10 * dpi.DpiScaleY));
 
-        Left = x / dpi.DpiScaleX;
+        var targetLeftDip = x / dpi.DpiScaleX;
         Top = y / dpi.DpiScaleY;
+
+        BeginAnimation(LeftProperty, null);
+        if (animateHorizontal && Math.Abs(Left - targetLeftDip) > 0.5)
+        {
+            var leftAnimation = new DoubleAnimation(Left, targetLeftDip, new Duration(TimeSpan.FromMilliseconds(220)))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            };
+            BeginAnimation(LeftProperty, leftAnimation);
+        }
+        else
+        {
+            Left = targetLeftDip;
+        }
     }
 
     protected override void OnDeactivated(EventArgs e)
     {
         LastDeactivatedUtc = DateTime.UtcNow;
-        SetSettingsViewVisible(false);
+        SetSettingsDrawerOpen(false, animate: false);
         Hide();
         base.OnDeactivated(e);
     }
@@ -267,9 +285,9 @@ public sealed partial class ToolboxFlyoutWindow : Window
     {
         if (e.Key == Key.Escape)
         {
-            if (SettingsPanel.Visibility == Visibility.Visible)
+            if (_isSettingsOpen)
             {
-                SetSettingsViewVisible(false);
+                SetSettingsDrawerOpen(false, animate: true);
             }
             else
             {
@@ -297,40 +315,77 @@ public sealed partial class ToolboxFlyoutWindow : Window
 
     private void OnSettingsToggle(object sender, RoutedEventArgs e)
     {
-        SetSettingsViewVisible(SettingsPanel.Visibility != Visibility.Visible);
+        SetSettingsDrawerOpen(!_isSettingsOpen, animate: true);
     }
 
-    private void OnBackToMainClicked(object sender, RoutedEventArgs e)
+    private void OnCloseSettingsClicked(object sender, RoutedEventArgs e)
     {
-        SetSettingsViewVisible(false);
+        SetSettingsDrawerOpen(false, animate: true);
     }
 
-    private void SetSettingsViewVisible(bool visible)
+    internal void SetSettingsDrawerOpen(bool open, bool animate)
     {
-        MainViewPanel.Visibility = visible ? Visibility.Collapsed : Visibility.Visible;
-        SettingsPanel.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
-        BrandHeader.Visibility = visible ? Visibility.Collapsed : Visibility.Visible;
-        SettingsHeader.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
-        StatusChip.Visibility = visible ? Visibility.Collapsed : Visibility.Visible;
-
-        SettingsButton.Background = visible
+        _isSettingsOpen = open;
+        SettingsButton.Background = open
             ? (Brush)FindResource("RamFillBrush")
             : (Brush)FindResource("CardBackgroundBrush");
-        SettingsButton.BorderBrush = visible
+        SettingsButton.BorderBrush = open
             ? (Brush)FindResource("RamBlueBrush")
             : (Brush)FindResource("CardBorderBrush");
-        SettingsIconPath.Stroke = visible
+        SettingsIconPath.Stroke = open
             ? (Brush)FindResource("TextPrimaryBrush")
             : (Brush)FindResource("TextMutedBrush");
 
-        if (IsVisible)
+        var targetWidth = open ? SettingsDrawerExpandedWidthDip : 0.0;
+        var targetOpacity = open ? 1.0 : 0.0;
+        var targetAngle = open ? 60.0 : 0.0;
+
+        SettingsDrawer.BeginAnimation(WidthProperty, null);
+        SettingsDrawerContent.BeginAnimation(OpacityProperty, null);
+        SettingsGearRotate.BeginAnimation(RotateTransform.AngleProperty, null);
+
+        if (animate && IsVisible)
         {
-            SizeToContent = SizeToContent.Height;
-            InvalidateMeasure();
-            UpdateLayout();
+            var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+            SettingsDrawer.BeginAnimation(
+                WidthProperty,
+                new DoubleAnimation(SettingsDrawer.ActualWidth, targetWidth, new Duration(TimeSpan.FromMilliseconds(220)))
+                {
+                    EasingFunction = ease
+                });
+            SettingsDrawerContent.BeginAnimation(
+                OpacityProperty,
+                new DoubleAnimation(SettingsDrawerContent.Opacity, targetOpacity, new Duration(TimeSpan.FromMilliseconds(180)))
+                {
+                    EasingFunction = ease
+                });
+            SettingsGearRotate.BeginAnimation(
+                RotateTransform.AngleProperty,
+                new DoubleAnimation(SettingsGearRotate.Angle, targetAngle, new Duration(TimeSpan.FromMilliseconds(220)))
+                {
+                    EasingFunction = ease
+                });
+
             if (_lastStripPhysicalRect is { } stripRect)
             {
-                PositionNearStrip(stripRect);
+                PositionNearStrip(stripRect, animateHorizontal: true);
+            }
+        }
+        else
+        {
+            SettingsDrawer.Width = targetWidth;
+            SettingsDrawerContent.Opacity = targetOpacity;
+            SettingsGearRotate.Angle = targetAngle;
+
+            if (IsVisible)
+            {
+                SizeToContent = SizeToContent.Height;
+                InvalidateMeasure();
+                UpdateLayout();
+                if (_lastStripPhysicalRect is { } stripRect)
+                {
+                    PositionNearStrip(stripRect, animateHorizontal: false);
+                }
             }
         }
     }

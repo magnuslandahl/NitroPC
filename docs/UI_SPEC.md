@@ -112,13 +112,12 @@ Use a `Viewbox` (`Width="15" Height="15"`) containing a `Canvas` (`Width="24" He
 ---
 
 ### B. Toolbox Flyout (`ToolboxFlyoutWindow`)
-- **Size**: `Width="352"`, `SizeToContent="Height"`, `CornerRadius="12"`, `Padding="16"`, outer margin `12` (room for subtle drop shadow).
-- **Anchor Position**: `10` DIPs above the top of the Windows taskbar, right-aligned with `TaskbarStripWindow` (clamped to `Screen.WorkingArea` so it never goes off-screen).
-- **Header controls**: Clicking the top-right gear switches the flyout between the main Toolbox view and a dedicated `Settings` view (`← Back   Settings`) rather than appending controls to the bottom.
-- **Sections** (`12` DIP vertical spacing):
-  1. **Header Row**:
-     - Left: `24×24` rounded gradient badge (`#FFF3A683` -> `#FF6EC6FF`, bold dark `N`) + `NitroPC Toolbox` (`FontSize="13.5"`, `FontWeight="SemiBold"`), or `← Back` + `Settings` when viewing settings.
-     - Right: Optically centered status pill (`● Awake · 03:59:59` in amber when active, `● Idle` in muted gray when inactive) and vector gear button.
+- **Size**: Collapsed card `Width="368"` (`336` inner column), expanding smoothly to `Width="668"` (`+300` right Settings drawer) with a `220ms` `CubicEase` animation; `Background="{x:Null}"` keeps unused layered window space click-through.
+- **Anchor Position**: `10` DIPs above the top of the Windows taskbar, with the collapsed card right-aligned to `TaskbarStripWindow` so opening Settings expands cleanly to the right (shifting left smoothly only if needed to stay inside `Screen.WorkingArea`).
+- **Sections** (`10–12` DIP vertical spacing):
+  1. **Header Row (`Height="28"`)**:
+     - Left: `24×24` rounded gradient badge (`#FFF3A683` -> `#FF6EC6FF`, bold dark `N`) + `NitroPC` (`FontSize="13.5"`, `FontWeight="SemiBold"`) + `vX.Y.Z` version pill.
+     - Right: `StatusChip` is hidden when Idle, and shown at `Height="28"`, `CornerRadius="7"` (`● Awake · 03:59:59`) when active so it matches the `28×28` (`CornerRadius="7"`) gear button beside it.
   2. **2-Column Telemetry Grid** (`Gap = 10` DIPs):
      - **Left Card — CPU Load**:
        - Header: `CPU LOAD` + large coral `24%` (`FontSize="20"`, `FontWeight="Bold"`).
@@ -142,12 +141,13 @@ Use a `Viewbox` (`Width="15" Height="15"`) containing a `Canvas` (`Width="24" He
        - `Off`: normal Windows CPU boost.
        - `Auto`: disables boost when CPU temperature reaches the configured threshold (`70°C` / `75°C` / `80°C`) and restores boost after cooling down (`10°C` hysteresis + 15s minimum hold).
        - `Quiet`: always disables Windows processor boost on AC and battery power while active.
-  6. **Settings View (switched via header gear)**:
+  6. **Right-Expanding Settings Drawer (toggled via header gear)**:
+     - Slides open (`0 -> 300` DIPs) to the right of a vertical `1px` divider while keeping the left Toolbox cards visible.
      - **TASKBAR DISPLAY** card:
        - **CPU graph**: `History` | `Cores` (`History` default)
        - **RAM readout**: `%` | `GB` | `% + GB`
        - **Keep Awake**: `Badge` | `Icon` | `Hide`
-       - **Auto Quiet limit**: `70°C` | `75°C` | `80°C`
+       - **Auto Quiet**: `70°C` | `75°C` | `80°C`
      - **SYSTEM & UPDATES** card:
        - **Start with Windows** and **Check updates automatically** switches + **Check for updates** button.
      - **Footer**: Prominent **Quit NitroPC** power button.

@@ -74,7 +74,7 @@ public sealed partial class TaskbarStripWindow : Window
             CpuTempValue.Text = $"{Math.Round(tempC):0}°C";
             CpuTempValue.Foreground = tempC >= _settings.AutoQuietThresholdCelsius
                 ? (Brush)FindResource("CpuCoralBrush")
-                : (Brush)FindResource("TextPrimaryBrush");
+                : (Brush)new BrushConverter().ConvertFromString("#FFD6E2E8")!;
         }
         else
         {
@@ -82,7 +82,7 @@ public sealed partial class TaskbarStripWindow : Window
         }
 
         CpuFreqValue.Text = metrics.CpuFrequencyGhz is { } freqGhz
-            ? $"{freqGhz:0.00}G"
+            ? $"{freqGhz:0.00} GHz"
             : string.Empty;
     }
 
@@ -116,12 +116,12 @@ public sealed partial class TaskbarStripWindow : Window
         KeepAwakeDivider.Visibility = hidden ? Visibility.Collapsed : Visibility.Visible;
         KeepAwakeBadge.Visibility = hidden ? Visibility.Collapsed : Visibility.Visible;
         KeepAwakeText.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
-        KeepAwakeBadge.Padding = compact ? new Thickness(5, 3, 5, 3) : new Thickness(6, 3, 6, 3);
+        KeepAwakeBadge.Padding = compact ? new Thickness(6, 0, 6, 0) : new Thickness(7, 0, 7, 0);
         RamValuePanel.Width = settings.RamDisplayMode switch
         {
-            RamDisplayMode.Both => 68,
-            RamDisplayMode.Gigabytes => 40,
-            _ => 36
+            RamDisplayMode.Both => 64,
+            RamDisplayMode.Gigabytes => 38,
+            _ => 32
         };
 
         CpuBars.IsHistoryMode = settings.CpuDisplayMode == CpuDisplayMode.History;
