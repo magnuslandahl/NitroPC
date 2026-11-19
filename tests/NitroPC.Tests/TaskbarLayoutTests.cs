@@ -74,6 +74,85 @@ public sealed class TaskbarLayoutTests
         Assert.True(max > 61.8);
     }
 
+    [Fact]
+    public void DesktopAndShellOverlaysDoNotTriggerFullscreenHide()
+    {
+        var primaryMonitor = Rect(0, 0, 3840, 2160);
+
+        // Dual-monitor Desktop (Progman)
+        Assert.False(FullscreenDetector.ShouldHideTaskbarStrip(
+            "Progman",
+            "explorer",
+            isVisible: true,
+            isCloaked: false,
+            Rect(-3840, 0, 3840, 2160),
+            primaryMonitor));
+
+        // Start Menu / Search / Shell overlays
+        Assert.False(FullscreenDetector.ShouldHideTaskbarStrip(
+            "Windows.UI.Core.CoreWindow",
+            "StartMenuExperienceHost",
+            isVisible: true,
+            isCloaked: false,
+            primaryMonitor,
+            primaryMonitor));
+        Assert.False(FullscreenDetector.ShouldHideTaskbarStrip(
+            "Windows.UI.Core.CoreWindow",
+            "SearchHost",
+            isVisible: true,
+            isCloaked: false,
+            primaryMonitor,
+            primaryMonitor));
+        Assert.False(FullscreenDetector.ShouldHideTaskbarStrip(
+            "XamlExplorerHostIslandWindow",
+            "explorer",
+            isVisible: true,
+            isCloaked: false,
+            primaryMonitor,
+            primaryMonitor));
+
+        // Cloaked UWP window
+        Assert.False(FullscreenDetector.ShouldHideTaskbarStrip(
+            "ApplicationFrameWindow",
+            "ApplicationFrameHost",
+            isVisible: true,
+            isCloaked: true,
+            primaryMonitor,
+            primaryMonitor));
+
+        // Fullscreen app on secondary monitor does not hide primary monitor strip
+        Assert.False(FullscreenDetector.ShouldHideTaskbarStrip(
+            "Chrome_WidgetWin_1",
+            "msedge",
+            isVisible: true,
+            isCloaked: false,
+            Rect(-3840, 0, 0, 2160),
+            primaryMonitor));
+    }
+
+    [Fact]
+    public void RealFullscreenAppOnSameMonitorTriggersHide()
+    {
+        var primaryMonitor = Rect(0, 0, 3840, 2160);
+
+        Assert.True(FullscreenDetector.ShouldHideTaskbarStrip(
+            "Chrome_WidgetWin_1",
+            "msedge",
+            isVisible: true,
+            isCloaked: false,
+            primaryMonitor,
+            primaryMonitor));
+
+        // File Explorer in F11 fullscreen mode
+        Assert.True(FullscreenDetector.ShouldHideTaskbarStrip(
+            "CabinetWClass",
+            "explorer",
+            isVisible: true,
+            isCloaked: false,
+            primaryMonitor,
+            primaryMonitor));
+    }
+
     private static NativeMethods.RECT Rect(int left, int top, int right, int bottom) =>
         new()
         {
