@@ -28,8 +28,6 @@ public sealed partial class ToolboxFlyoutWindow : Window
     private const double CollapsedCardOuterWidthDip = 384.0; // 8 left margin + 368 card + 8 right shadow
     private const double SettingsDrawerExpandedWidthDip = 300.0;
 
-    private static readonly int[] SupportedPresets = [60, 120, 240, 480, 0];
-    private static readonly int[] SupportedThresholds = [70, 75, 80];
     private readonly NitroSettings _settings;
     private readonly List<ProcessRowElements> _processRows = new(5);
     private MetricsSnapshot? _latestMetrics;
@@ -42,16 +40,16 @@ public sealed partial class ToolboxFlyoutWindow : Window
     public ToolboxFlyoutWindow(NitroSettings settings)
     {
         _settings = settings;
-        _settings.KeepAwakeMinutes = NormalizePresetMinutes(settings.KeepAwakeMinutes);
-        _settings.AutoQuietThresholdCelsius = NormalizeAutoThreshold(settings.AutoQuietThresholdCelsius);
-        _quietModeLevel = settings.QuietMode;
+        _settings.Normalize();
+        _quietModeLevel = _settings.QuietMode;
         InitializeComponent();
         InitializeProcessRows();
         var versionLabel = $"v{UpdateService.CurrentVersionText}";
         HeaderVersionText.Text = versionLabel;
         VersionText.Text = versionLabel;
         StartupToggle.IsChecked = new StartupService().IsEnabled();
-        AutomaticUpdatesToggle.IsChecked = settings.AutomaticallyCheckForUpdates;
+        AutomaticUpdatesToggle.IsChecked = _settings.AutomaticallyCheckForUpdates;
+        ApplyInitialCpuMode();
         PreviewKeyDown += OnPreviewKeyDown;
         ApplySelectionStyles();
         RefreshQuietModeSummary();
@@ -105,6 +103,16 @@ public sealed partial class ToolboxFlyoutWindow : Window
             UpdateLayout();
             PositionNearStrip(stripRect);
         }
+    }
+
+    private void ApplyInitialCpuMode()
+    {
+        var history = _settings.CpuDisplayMode == CpuDisplayMode.History;
+        CpuLargeBars.IsHistoryMode = history;
+        CpuLargeBars.HighlightLatestBar = history;
+        CpuCoresText.Text = history
+            ? "60-second history"
+            : $"{Environment.ProcessorCount} logical cores";
     }
 
     private void ApplyCpuDisplay(MetricsSnapshot metrics)
@@ -172,7 +180,6 @@ public sealed partial class ToolboxFlyoutWindow : Window
     {
         _quietModeLevel = mode;
         _isBoostDisabled = boostDisabled;
-        _settings.QuietMode = mode;
         _settings.AutoQuietThresholdCelsius = NormalizeAutoThreshold(thresholdCelsius);
         ApplySelectionStyles();
         RefreshQuietModeSummary();
@@ -448,6 +455,13 @@ public sealed partial class ToolboxFlyoutWindow : Window
         _settings.AutoQuietThresholdCelsius = NormalizeAutoThreshold(threshold);
         SettingsChanged?.Invoke(_settings);
         AutoQuietThresholdChangedRequested?.Invoke(_settings.AutoQuietThresholdCelsius);
+        if (_latestMetrics?.CpuTemperatureCelsius is { } tempC)
+        {
+            CpuSensorsText.Foreground = tempC >= _settings.AutoQuietThresholdCelsius
+                ? (Brush)FindResource("CpuCoralBrush")
+                : (Brush)FindResource("TextPrimaryBrush");
+        }
+
         ApplySelectionStyles();
         RefreshQuietModeSummary();
     }
@@ -483,8 +497,8 @@ public sealed partial class ToolboxFlyoutWindow : Window
         SetSelected(QuietAlwaysButton, _quietModeLevel == QuietModeLevel.Quiet);
 
         var threshold = NormalizeAutoThreshold(_settings.AutoQuietThresholdCelsius);
+        SetSelected(AutoTemp60Button, threshold == 60);
         SetSelected(AutoTemp70Button, threshold == 70);
-        SetSelected(AutoTemp75Button, threshold == 75);
         SetSelected(AutoTemp80Button, threshold == 80);
         ApplyPresetStyles();
     }
@@ -533,20 +547,11 @@ public sealed partial class ToolboxFlyoutWindow : Window
             : (Brush)FindResource("CardBorderBrush");
     }
 
-    internal static int NormalizePresetMinutes(int minutes)
-    {
-        if (minutes <= 0)
-        {
-            return 0;
-        }
-
-        return SupportedPresets
-            .Where(preset => preset > 0)
-            .MinBy(preset => Math.Abs(preset - minutes));
-    }
+    internal static int NormalizePresetMinutes(int minutes) =>
+        NitroSettings.NormalizePresetMinutes(minutes);
 
     internal static int NormalizeAutoThreshold(int thresholdCelsius) =>
-        SupportedThresholds.MinBy(value => Math.Abs(value - thresholdCelsius));
+        NitroSettings.NormalizeAutoQuietThreshold(thresholdCelsius);
 
     private void InitializeProcessRows()
     {

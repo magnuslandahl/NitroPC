@@ -26,4 +26,26 @@ public sealed class StartupService
             ?? throw new InvalidOperationException("The NitroPC process path is unavailable.");
         key.SetValue(ValueName, $"\"{executablePath}\"", RegistryValueKind.String);
     }
+
+    public void EnsureCurrentExecutablePathIfEnabled()
+    {
+        if (Environment.ProcessPath is not { Length: > 0 } executablePath)
+        {
+            return;
+        }
+
+        using var readKey = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: false);
+        if (readKey?.GetValue(ValueName) is not string currentValue ||
+            string.IsNullOrWhiteSpace(currentValue))
+        {
+            return;
+        }
+
+        var expected = $"\"{executablePath}\"";
+        if (!string.Equals(currentValue, expected, StringComparison.OrdinalIgnoreCase))
+        {
+            using var writeKey = Registry.CurrentUser.CreateSubKey(RunKeyPath);
+            writeKey.SetValue(ValueName, expected, RegistryValueKind.String);
+        }
+    }
 }

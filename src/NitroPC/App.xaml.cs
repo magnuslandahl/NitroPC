@@ -26,6 +26,8 @@ public partial class App : WpfApplication
     private ToolboxFlyoutWindow? _flyoutWindow;
     private NitroSettings? _settings;
     private bool _updateCheckInProgress;
+    private bool _startupCompleted;
+    private bool _isShuttingDown;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -42,10 +44,15 @@ public partial class App : WpfApplication
         }
 
         base.OnStartup(e);
+        SessionEnding += OnSessionEnding;
 
         _settingsService = new SettingsService();
         _settings = _settingsService.Load();
+        SaveSettingsSafely(_settings);
+
         _startupService = new StartupService();
+        EnsureStartupPathSafely();
+
         _metricsService = new SystemMetricsService();
         _keepAwakeService = new KeepAwakeService();
         _quietModeService = new QuietModeService(
@@ -66,8 +73,18 @@ public partial class App : WpfApplication
 
         _stripWindow.ApplySettings(_settings);
         _stripWindow.Show();
+
+        if (_settings.AutoStartKeepAwakeOnLaunch)
+        {
+            StartKeepAwake(
+                _settings.KeepAwakeMinutes <= 0
+                    ? null
+                    : TimeSpan.FromMinutes(_settings.KeepAwakeMinutes));
+        }
+
         RefreshKeepAwakeState();
         RefreshQuietModeState();
+        _startupCompleted = true;
 
         try
         {
@@ -80,14 +97,6 @@ public partial class App : WpfApplication
         catch (Win32Exception exception)
         {
             ReportError("NitroPC could not read Windows memory telemetry.", exception);
-        }
-
-        if (_settings.AutoStartKeepAwakeOnLaunch)
-        {
-            StartKeepAwake(
-                _settings.KeepAwakeMinutes <= 0
-                    ? null
-                    : TimeSpan.FromMinutes(_settings.KeepAwakeMinutes));
         }
 
         if (_settings.AutomaticallyCheckForUpdates)
@@ -199,13 +208,21 @@ public partial class App : WpfApplication
 
     private void ToggleKeepAwake()
     {
-        try
+        if (_keepAwakeService is null || _settings is null)
         {
-            _keepAwakeService!.Toggle(_settings!.KeepAwakeMinutes);
+            return;
         }
-        catch (Win32Exception exception)
+
+        if (_keepAwakeService.IsAwake)
         {
-            ReportError("NitroPC could not toggle Keep Awake.", exception);
+            StopKeepAwake();
+        }
+        else
+        {
+            StartKeepAwake(
+                _settings.KeepAwakeMinutes <= 0
+                    ? null
+                    : TimeSpan.FromMinutes(_settings.KeepAwakeMinutes));
         }
     }
 
@@ -214,6 +231,14 @@ public partial class App : WpfApplication
         try
         {
             _keepAwakeService!.Start(duration);
+            if (_settings is not null)
+            {
+                _settings.KeepAwakeMinutes = duration is null
+                    ? 0
+                    : NitroSettings.NormalizePresetMinutes((int)Math.Round(duration.Value.TotalMinutes));
+                _settings.AutoStartKeepAwakeOnLaunch = true;
+                SaveSettingsSafely(_settings);
+            }
         }
         catch (Win32Exception exception)
         {
@@ -226,6 +251,11 @@ public partial class App : WpfApplication
         try
         {
             _keepAwakeService!.Stop();
+            if (_settings is not null && _settings.AutoStartKeepAwakeOnLaunch)
+            {
+                _settings.AutoStartKeepAwakeOnLaunch = false;
+                SaveSettingsSafely(_settings);
+            }
         }
         catch (Win32Exception exception)
         {
@@ -357,11 +387,62 @@ public partial class App : WpfApplication
             return;
         }
 
+        if (_startupCompleted &&
+            !_isShuttingDown &&
+            !_keepAwakeService.IsAwake &&
+            _settings is { AutoStartKeepAwakeOnLaunch: true })
+        {
+            _settings.AutoStartKeepAwakeOnLaunch = false;
+            SaveSettingsSafely(_settings);
+        }
+
         _stripWindow?.UpdateKeepAwake(_keepAwakeService);
         _flyoutWindow?.UpdateKeepAwake(_keepAwakeService);
         _trayIconService?.UpdateKeepAwake(
             _keepAwakeService.IsAwake,
             _keepAwakeService.Remaining);
+    }
+
+    private void SaveSettingsSafely(NitroSettings settings)
+    {
+        try
+        {
+            _settingsService?.Save(settings);
+        }
+        catch (IOException exception)
+        {
+            ReportError("NitroPC could not save its settings.", exception);
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            ReportError("NitroPC could not save its settings.", exception);
+        }
+    }
+
+    private void EnsureStartupPathSafely()
+    {
+        try
+        {
+            _startupService?.EnsureCurrentExecutablePathIfEnabled();
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+        catch (SecurityException)
+        {
+        }
+    }
+
+    private void OnSessionEnding(object sender, SessionEndingCancelEventArgs e)
+    {
+        _isShuttingDown = true;
+        if (_settings is not null)
+        {
+            SaveSettingsSafely(_settings);
+        }
     }
 
     private void SetStartupEnabled(bool enabled)
@@ -470,8 +551,13 @@ public partial class App : WpfApplication
         }
     }
 
-    private static void ReportError(string title, Exception exception)
+    private void ReportError(string title, Exception exception)
     {
+        if (_isShuttingDown)
+        {
+            return;
+        }
+
         WpfMessageBox.Show(
             $"{title}\n\n{exception.Message}",
             "NitroPC",
@@ -481,6 +567,8 @@ public partial class App : WpfApplication
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _isShuttingDown = true;
+        SessionEnding -= OnSessionEnding;
         try
         {
             try

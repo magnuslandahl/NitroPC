@@ -139,15 +139,15 @@ Use a `Viewbox` (`Width="15" Height="15"`) containing a `Canvas` (`Width="24" He
   5. **Quiet Mode Card (`Off` | `Auto` | `Quiet`)**:
      - Vector crescent-moon icon + 3-state segmented selector:
        - `Off`: normal Windows CPU boost.
-       - `Auto`: disables boost when CPU temperature reaches the configured threshold (`70°C` / `75°C` / `80°C`) and restores boost after cooling down (`10°C` hysteresis + 15s minimum hold).
+       - `Auto`: disables boost when CPU temperature reaches the configured threshold (`60°C` default / `70°C` / `80°C`) and restores boost after cooling down (`5°C` hysteresis + 15s minimum hold).
        - `Quiet`: always disables Windows processor boost on AC and battery power while active.
   6. **Right-Expanding Settings Drawer (toggled via header gear)**:
      - Slides open (`0 -> 300` DIPs) to the right of a vertical `1px` divider while keeping the left Toolbox cards visible.
-     - **TASKBAR DISPLAY** card:
+     - **TASKBAR DISPLAY** card (all leftmost options are the defaults):
        - **CPU graph**: `History` | `Cores` (`History` default)
-       - **RAM readout**: `%` | `GB` | `% + GB`
-       - **Keep Awake**: `Badge` | `Icon` | `Hide`
-       - **Auto Quiet**: `70°C` | `75°C` | `80°C`
+       - **RAM readout**: `%` | `GB` | `% + GB` (`%` default)
+       - **Keep Awake**: `Badge` | `Icon` | `Hide` (`Badge` default)
+       - **Auto Quiet**: `60°C` | `70°C` | `80°C` (`60°C` default)
      - **SYSTEM & UPDATES** card:
        - **Start with Windows** and **Check updates automatically** switches + **Check for updates** button.
      - **Footer**: Prominent **Quit NitroPC** power button.

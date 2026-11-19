@@ -520,8 +520,8 @@
                                                    FontSize="11.5"
                                                    Foreground="{StaticResource TextPrimaryBrush}"/>
                                         <StackPanel Grid.Column="2" Orientation="Horizontal">
-                                            <Button x:Name="AutoTemp70Button" Content="70°C" Tag="70" Style="{StaticResource NitroChip}" Click="OnAutoThresholdClicked"/>
-                                            <Button x:Name="AutoTemp75Button" Margin="4,0,0,0" Content="75°C" Tag="75" Style="{StaticResource NitroChip}" Click="OnAutoThresholdClicked"/>
+                                            <Button x:Name="AutoTemp60Button" Content="60°C" Tag="60" Style="{StaticResource NitroChip}" Click="OnAutoThresholdClicked"/>
+                                            <Button x:Name="AutoTemp70Button" Margin="4,0,0,0" Content="70°C" Tag="70" Style="{StaticResource NitroChip}" Click="OnAutoThresholdClicked"/>
                                             <Button x:Name="AutoTemp80Button" Margin="4,0,0,0" Content="80°C" Tag="80" Style="{StaticResource NitroChip}" Click="OnAutoThresholdClicked"/>
                                         </StackPanel>
                                     </Grid>

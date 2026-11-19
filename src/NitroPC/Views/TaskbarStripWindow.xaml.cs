@@ -133,7 +133,17 @@ public sealed partial class TaskbarStripWindow : Window
         if (_latestMetrics is not null)
         {
             ApplyCpuMetrics(_latestMetrics, settings.CpuDisplayMode);
+            UpdateCpuSensors(_latestMetrics);
             RamValue.Text = FormatRamValue(_latestMetrics, settings.RamDisplayMode);
+        }
+        else
+        {
+            RamValue.Text = settings.RamDisplayMode switch
+            {
+                RamDisplayMode.Gigabytes => "0 GB",
+                RamDisplayMode.Both => "0% · 0G",
+                _ => "0%"
+            };
         }
 
         UpdateLayout();

@@ -102,8 +102,9 @@ internal sealed class WindowsQuietModePlatform : IQuietModePlatform
 
 public sealed class QuietModeService : IDisposable
 {
+    public const int DefaultAutoThresholdCelsius = 60;
     public static readonly TimeSpan AutoMinimumHoldDuration = TimeSpan.FromSeconds(15);
-    public const int HysteresisBandCelsius = 10;
+    public const int HysteresisBandCelsius = 5;
 
     private readonly IQuietModePlatform _platform;
     private readonly Action<QuietModeRecoveryState?> _persistRecoveryState;
@@ -111,7 +112,7 @@ public sealed class QuietModeService : IDisposable
     private QuietModeRecoveryState? _activeState;
     private QuietModeRecoveryState? _pendingRecovery;
     private QuietModeLevel _mode = QuietModeLevel.Off;
-    private int _autoThresholdCelsius = 75;
+    private int _autoThresholdCelsius = DefaultAutoThresholdCelsius;
     private DateTime _lastAutoTransitionUtc = DateTime.MinValue;
     private double? _latestTemperatureCelsius;
     private double _latestCpuPercent;
@@ -121,7 +122,7 @@ public sealed class QuietModeService : IDisposable
     public QuietModeService(
         QuietModeRecoveryState? pendingRecovery,
         Action<QuietModeRecoveryState?> persistRecoveryState,
-        int autoThresholdCelsius = 75)
+        int autoThresholdCelsius = DefaultAutoThresholdCelsius)
         : this(
             new WindowsQuietModePlatform(),
             pendingRecovery,
@@ -136,7 +137,7 @@ public sealed class QuietModeService : IDisposable
         QuietModeRecoveryState? pendingRecovery,
         Action<QuietModeRecoveryState?> persistRecoveryState,
         Func<DateTime>? utcNow = null,
-        int autoThresholdCelsius = 75)
+        int autoThresholdCelsius = DefaultAutoThresholdCelsius)
     {
         _platform = platform;
         _pendingRecovery = pendingRecovery;

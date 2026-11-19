@@ -50,6 +50,39 @@ public sealed class SettingsServiceTests
         Assert.Equal(CpuDisplayMode.History, actual.CpuDisplayMode);
         Assert.Equal(RamDisplayMode.Percent, actual.RamDisplayMode);
         Assert.Equal(KeepAwakeBarMode.Badge, actual.KeepAwakeBarMode);
+        Assert.Equal(60, actual.AutoQuietThresholdCelsius);
         Assert.True(actual.AutomaticallyCheckForUpdates);
+    }
+
+    [Fact]
+    public void NormalizesLegacyValuesAndRecoversFromInterruptedTempSave()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "NitroPC.Tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        var path = Path.Combine(dir, "settings.json");
+
+        // Primary file corrupted during reboot, while atomic .tmp write completed with legacy integer enums
+        File.WriteAllText(path, "");
+        File.WriteAllText(
+            path + ".tmp",
+            """
+            {
+              "KeepAwakeMinutes": 30,
+              "CpuDisplayMode": 0,
+              "RamDisplayMode": 1,
+              "KeepAwakeBarMode": 2,
+              "QuietMode": 1,
+              "AutoQuietThresholdCelsius": 75
+            }
+            """);
+
+        var actual = new SettingsService(path).Load();
+
+        Assert.Equal(60, actual.KeepAwakeMinutes);
+        Assert.Equal(CpuDisplayMode.Cores, actual.CpuDisplayMode);
+        Assert.Equal(RamDisplayMode.Gigabytes, actual.RamDisplayMode);
+        Assert.Equal(KeepAwakeBarMode.Hidden, actual.KeepAwakeBarMode);
+        Assert.Equal(QuietModeLevel.Auto, actual.QuietMode);
+        Assert.Equal(70, actual.AutoQuietThresholdCelsius);
     }
 }

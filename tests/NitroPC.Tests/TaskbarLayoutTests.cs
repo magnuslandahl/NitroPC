@@ -62,6 +62,12 @@ public sealed class TaskbarLayoutTests
         Assert.Equal(60, ToolboxFlyoutWindow.NormalizePresetMinutes(60));
         Assert.Equal(240, ToolboxFlyoutWindow.NormalizePresetMinutes(240));
         Assert.Equal(480, ToolboxFlyoutWindow.NormalizePresetMinutes(480));
+
+        Assert.Equal(60, ToolboxFlyoutWindow.NormalizeAutoThreshold(0));
+        Assert.Equal(60, ToolboxFlyoutWindow.NormalizeAutoThreshold(60));
+        Assert.Equal(70, ToolboxFlyoutWindow.NormalizeAutoThreshold(70));
+        Assert.Equal(70, ToolboxFlyoutWindow.NormalizeAutoThreshold(75));
+        Assert.Equal(80, ToolboxFlyoutWindow.NormalizeAutoThreshold(80));
     }
 
     [Fact]
