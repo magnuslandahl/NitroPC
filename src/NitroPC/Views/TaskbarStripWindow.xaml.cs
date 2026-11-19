@@ -18,15 +18,18 @@ public sealed partial class TaskbarStripWindow : Window
 {
     private readonly DispatcherTimer _dockTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
     private readonly CancellationTokenSource _obstacleScanCts = new();
+    private readonly NativeMethods.WinEventDelegate _foregroundWinEventCallback;
     private NitroSettings _settings;
     private NativeMethods.RECT _lastPhysicalBounds;
     private MetricsSnapshot? _latestMetrics;
+    private IntPtr _foregroundHook;
     private volatile IReadOnlyList<NativeMethods.RECT> _cachedObstacles = Array.Empty<NativeMethods.RECT>();
     private volatile bool _initialObstacleScanDone;
 
     public TaskbarStripWindow(NitroSettings settings)
     {
         _settings = settings;
+        _foregroundWinEventCallback = OnForegroundWindowChanged;
         InitializeComponent();
         SourceInitialized += OnSourceInitialized;
         SizeChanged += (_, _) => Dock();
@@ -151,14 +154,40 @@ public sealed partial class TaskbarStripWindow : Window
         var exStyle = NativeMethods.GetWindowLongPtr(hwnd, NativeMethods.GWL_EXSTYLE).ToInt64();
         exStyle |= NativeMethods.WS_EX_TOOLWINDOW | NativeMethods.WS_EX_NOACTIVATE;
         NativeMethods.SetWindowLongPtr(hwnd, NativeMethods.GWL_EXSTYLE, new IntPtr(exStyle));
+        _foregroundHook = NativeMethods.SetWinEventHook(
+            NativeMethods.EVENT_SYSTEM_FOREGROUND,
+            NativeMethods.EVENT_SYSTEM_FOREGROUND,
+            IntPtr.Zero,
+            _foregroundWinEventCallback,
+            0,
+            0,
+            NativeMethods.WINEVENT_OUTOFCONTEXT | NativeMethods.WINEVENT_SKIPOWNPROCESS);
         _dockTimer.Start();
         _ = RunObstacleScanLoopAsync(_obstacleScanCts.Token);
         _ = RevealFallbackAsync(_obstacleScanCts.Token);
     }
 
+    private void OnForegroundWindowChanged(
+        IntPtr hWinEventHook,
+        uint eventType,
+        IntPtr hwnd,
+        int idObject,
+        int idChild,
+        uint dwEventThread,
+        uint dwmsEventTime)
+    {
+        Dock();
+    }
+
     private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         _dockTimer.Stop();
+        if (_foregroundHook != IntPtr.Zero)
+        {
+            NativeMethods.UnhookWinEvent(_foregroundHook);
+            _foregroundHook = IntPtr.Zero;
+        }
+
         _obstacleScanCts.Cancel();
         _obstacleScanCts.Dispose();
     }
@@ -227,26 +256,39 @@ public sealed partial class TaskbarStripWindow : Window
         var handle = new WindowInteropHelper(this).Handle;
         TryResolveTaskbarRects(out var shellTray, out var shellRect, out var notifyRect);
 
-        var foreground = NativeMethods.GetForegroundWindow();
-        if (foreground != IntPtr.Zero &&
-            foreground != shellTray &&
-            foreground != handle &&
-            NativeMethods.GetWindowRect(foreground, out var foregroundRect))
+        // Owning the strip to Shell_TrayWnd ensures win32k atomically keeps the strip above the
+        // taskbar whenever the user clicks on empty taskbar space (preventing Z-order flicker).
+        if (shellTray != IntPtr.Zero &&
+            NativeMethods.GetWindowLongPtr(handle, NativeMethods.GWLP_HWNDPARENT) != shellTray)
         {
-            var screen = WinForms.Screen.FromHandle(foreground);
-            if (foregroundRect.Left <= screen.Bounds.Left &&
-                foregroundRect.Top <= screen.Bounds.Top &&
-                foregroundRect.Width >= screen.Bounds.Width &&
-                foregroundRect.Height >= screen.Bounds.Height)
-            {
-                if (Visibility != Visibility.Hidden)
-                {
-                    Visibility = Visibility.Hidden;
-                    DockingHidden?.Invoke();
-                }
+            NativeMethods.SetWindowLongPtr(handle, NativeMethods.GWLP_HWNDPARENT, shellTray);
+        }
 
-                return;
+        var stripScreen = shellTray != IntPtr.Zero
+            ? WinForms.Screen.FromHandle(shellTray)
+            : (WinForms.Screen.PrimaryScreen ?? WinForms.Screen.AllScreens[0]);
+        var monitorBounds = new NativeMethods.RECT
+        {
+            Left = stripScreen.Bounds.Left,
+            Top = stripScreen.Bounds.Top,
+            Right = stripScreen.Bounds.Right,
+            Bottom = stripScreen.Bounds.Bottom
+        };
+
+        var foreground = NativeMethods.GetForegroundWindow();
+        if (FullscreenDetector.IsMonitorCoveredByForeground(
+                foreground,
+                shellTray,
+                handle,
+                monitorBounds))
+        {
+            if (Visibility != Visibility.Hidden)
+            {
+                Visibility = Visibility.Hidden;
+                DockingHidden?.Invoke();
             }
+
+            return;
         }
 
         var dpi = VisualTreeHelper.GetDpi(this);
