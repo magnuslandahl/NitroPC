@@ -21,18 +21,25 @@ production NuGet update framework. Automatic checks are enabled by default and
 can be disabled in the toolbox. **Check updates** always remains available in
 both the toolbox and tray menu.
 
-## Release packages
+## CI and automatic release workflows
 
-The GitHub Actions workflow at `.github/workflows/release.yml` builds x64 and
-arm64 framework-dependent Windows packages. The release contains:
-
-- `NitroPC-win-x64.zip`
-- `NitroPC-win-arm64.zip`
-- `SHA256SUMS.txt`
+- **`.github/workflows/ci.yml`** runs on every pull request and push to `main`,
+  verifying formatting (`dotnet format --verify-no-changes`), Release build,
+  unit tests, and `win-x64` / `win-arm64` bundle publishing.
+- **`.github/workflows/release.yml`** runs **automatically** on pushes to `main`
+  that touch `src/**`, `NitroPC.sln`, or `release.yml` (and can also be run
+  manually via `workflow_dispatch` with a `patch` / `minor` / `major` bump or
+  explicit version). It calculates the next semantic `vX.Y.Z` version from the
+  highest existing release tag (or `<Version>` baseline), stamps `-p:Version`
+  into the binaries, and publishes:
+  - `NitroPC-win-x64.zip`
+  - `NitroPC-win-arm64.zip`
+  - `SHA256SUMS.txt`
 
 Each ZIP contains `NitroPC.exe`, the WPF/runtime files, and the four
-`NitroPC.Updater` files. Releases are created from a semantic `vX.Y.Z` tag or
-through the manual workflow with a version input.
+`NitroPC.Updater` files. `UpdateService` queries `/releases/latest` with
+`Accept: application/vnd.github+json` and downloads `SHA256SUMS.txt` and the
+selected ZIP from `/releases/assets/{id}` with `Accept: application/octet-stream`.
 
 The first release must be installed manually. Updates can replace an existing
 installation only where the current Windows user can write the application

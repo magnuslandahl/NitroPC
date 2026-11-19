@@ -408,7 +408,7 @@ public partial class App : WpfApplication
             }
             if (!result.Installable)
             {
-                if (interactive && result.Checked)
+                if (interactive && _flyoutWindow?.IsVisible != true)
                 {
                     WpfMessageBox.Show(
                         result.Message,

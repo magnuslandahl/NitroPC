@@ -13,14 +13,17 @@ public sealed class UpdateServiceTests
     {
         Assert.True(UpdateService.IsNewer(new Version(0, 10, 0), new Version(0, 9, 9)));
         Assert.False(UpdateService.IsNewer(new Version(1, 0, 0), new Version(1, 0, 0)));
+        Assert.False(UpdateService.IsNewer(new Version(0, 2, 0), new Version(0, 2, 0, 0)));
+        Assert.True(UpdateService.IsNewer(new Version(0, 2, 1), new Version(0, 2, 0, 0)));
         Assert.Equal(new Version(2, 3, 4), UpdateService.ParseVersion("v2.3.4"));
+        Assert.Equal(new Version(2, 3, 4), UpdateService.ParseVersion("NitroPC 2.3.4"));
     }
 
     [Fact]
     public void ChecksumMatchesExactAssetName()
     {
         var manifest = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  Other.zip\n" +
-                       "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb  NitroPC-win-x64.zip\n";
+                       "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb  ./NitroPC-win-x64.zip\n";
 
         Assert.Equal(
             "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
@@ -116,9 +119,25 @@ public sealed class UpdateServiceTests
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
-            var body = request.RequestUri!.AbsolutePath.EndsWith("/releases/latest", StringComparison.Ordinal)
-                ? _latest
-                : _checksum;
+            var acceptMediaTypes = request.Headers.Accept
+                .Select(header => header.MediaType ?? string.Empty)
+                .ToArray();
+            var isLatestEndpoint = request.RequestUri!.AbsolutePath.EndsWith(
+                "/releases/latest",
+                StringComparison.Ordinal);
+
+            if (isLatestEndpoint)
+            {
+                Assert.Equal(["application/vnd.github+json"], acceptMediaTypes);
+            }
+            else
+            {
+                // Real GitHub asset endpoints return JSON metadata instead of binary bytes
+                // if application/vnd.github+json is sent alongside application/octet-stream.
+                Assert.Equal(["application/octet-stream"], acceptMediaTypes);
+            }
+
+            var body = isLatestEndpoint ? _latest : _checksum;
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(body, Encoding.UTF8)

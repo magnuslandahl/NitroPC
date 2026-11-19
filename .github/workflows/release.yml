@@ -2,62 +2,244 @@ name: Release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches: [main]
+    paths:
+      - "src/**"
+      - "NitroPC.sln"
+      - ".github/workflows/release.yml"
   workflow_dispatch:
     inputs:
-      version:
-        description: "Release version (for example 0.2.0)"
+      bump:
+        description: "Version part to advance for this manual release"
         required: true
+        default: patch
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      version:
+        description: "Optional explicit semantic version override (for example 0.2.0)"
+        required: false
         type: string
 
 permissions:
   contents: write
+  pull-requests: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   release:
+    name: Build & publish GitHub Release
     runs-on: windows-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
 
-      - name: Build and test
-        run: |
-          dotnet build NitroPC.sln -c Release --nologo
-          dotnet test NitroPC.sln -c Release --no-build --nologo
-
-      - name: Select version
+      - name: Calculate next semantic version
         id: version
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MANUAL_BUMP: ${{ inputs.bump }}
+          EXPLICIT_VERSION: ${{ inputs.version }}
         run: |
-          $raw = if ($env:GITHUB_EVENT_NAME -eq 'push') { $env:GITHUB_REF_NAME } else { '${{ inputs.version }}' }
-          $version = $raw.TrimStart('v', 'V')
-          if ($version -notmatch '^\d+\.\d+\.\d+$') {
-            throw "Invalid release version '$raw'. Expected vX.Y.Z or X.Y.Z."
+          $ErrorActionPreference = 'Stop'
+
+          if ($env:GITHUB_REF -ne 'refs/heads/main') {
+            throw "Releases can only be published from main, not '$($env:GITHUB_REF)'."
           }
-          "version=$version" >> $env:GITHUB_OUTPUT
-          "tag=v$version" >> $env:GITHUB_OUTPUT
+
+          git fetch --tags --force origin
+
+          function Try-ParseThreePartVersion([string]$raw) {
+            if ([string]::IsNullOrWhiteSpace($raw)) { return $null }
+            $clean = $raw.Trim()
+            if ($clean -match '^[vV]?(\d+)\.(\d+)\.(\d+)$') {
+              return [Version]::new([int]$Matches[1], [int]$Matches[2], [int]$Matches[3])
+            }
+            return $null
+          }
+
+          $candidates = [System.Collections.Generic.List[Version]]::new()
+          [xml]$csproj = Get-Content 'src\NitroPC\NitroPC.csproj'
+          $projVer = Try-ParseThreePartVersion ($csproj.Project.PropertyGroup.Version | Select-Object -First 1)
+          if ($null -ne $projVer) { $candidates.Add($projVer) }
+
+          foreach ($tag in (git tag --list 'v*')) {
+            $parsed = Try-ParseThreePartVersion $tag
+            if ($null -ne $parsed) { $candidates.Add($parsed) }
+          }
+
+          $releaseTags = gh api "repos/$($env:GITHUB_REPOSITORY)/releases?per_page=25" --jq '.[].tag_name' 2>$null
+          if ($LASTEXITCODE -eq 0 -and $releaseTags) {
+            foreach ($tag in ($releaseTags -split "`r?`n")) {
+              $parsed = Try-ParseThreePartVersion $tag
+              if ($null -ne $parsed) { $candidates.Add($parsed) }
+            }
+          }
+
+          if ($candidates.Count -eq 0) {
+            $candidates.Add([Version]::new(0, 1, 0))
+          }
+
+          $currentVersion = ($candidates | Sort-Object -Descending | Select-Object -First 1)
+          $currentText = "$($currentVersion.Major).$($currentVersion.Minor).$($currentVersion.Build)"
+
+          $prNumber = ''
+          $prTitle = ''
+          $bump = 'patch'
+          $reason = 'default patch bump'
+
+          if (-not [string]::IsNullOrWhiteSpace($env:EXPLICIT_VERSION)) {
+            $explicit = Try-ParseThreePartVersion $env:EXPLICIT_VERSION
+            if ($null -eq $explicit) {
+              throw "Invalid explicit version '$($env:EXPLICIT_VERSION)'. Expected X.Y.Z or vX.Y.Z."
+            }
+            if ($explicit -le $currentVersion) {
+              throw "Explicit version '$explicit' must be greater than current version '$currentText'."
+            }
+            $nextText = "$($explicit.Major).$($explicit.Minor).$($explicit.Build)"
+            $bump = 'explicit'
+            $reason = 'explicit version input'
+          }
+          else {
+            if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch' -and -not [string]::IsNullOrWhiteSpace($env:MANUAL_BUMP)) {
+              $bump = $env:MANUAL_BUMP.Trim().ToLowerInvariant()
+              $reason = "manual $bump selection"
+            }
+            else {
+              $subject = (git log -1 --format=%s $env:GITHUB_SHA).Trim()
+              $labels = @()
+
+              if ($subject -match '^Merge pull request #(\d+)\b') {
+                $prNumber = $Matches[1]
+              }
+              elseif ($subject -match '\(#(\d+)\)\s*$') {
+                $prNumber = $Matches[1]
+              }
+
+              $pullJson = $null
+              if ($prNumber) {
+                $rawPull = gh api "repos/$($env:GITHUB_REPOSITORY)/pulls/$prNumber" 2>$null
+                if ($LASTEXITCODE -eq 0 -and $rawPull) {
+                  $pullJson = $rawPull | ConvertFrom-Json
+                }
+              }
+              else {
+                $rawPulls = gh api "repos/$($env:GITHUB_REPOSITORY)/commits/$($env:GITHUB_SHA)/pulls" 2>$null
+                if ($LASTEXITCODE -eq 0 -and $rawPulls) {
+                  $arr = $rawPulls | ConvertFrom-Json
+                  if ($arr -and $arr.Count -gt 0) {
+                    $pullJson = $arr[0]
+                    $prNumber = [string]$pullJson.number
+                  }
+                }
+              }
+
+              if ($null -ne $pullJson) {
+                $prTitle = [string]$pullJson.title
+                if ($pullJson.labels) {
+                  $labels = @($pullJson.labels | ForEach-Object { ([string]$_.name).Trim().ToLowerInvariant() })
+                }
+              }
+
+              $majorLabels = @('version:major', 'semver:major')
+              $minorLabels = @('enhancement', 'feature', 'version:minor', 'semver:minor')
+              $patchLabels = @('bug', 'documentation', 'version:patch', 'semver:patch')
+
+              if ($labels | Where-Object { $majorLabels -contains $_ }) {
+                $bump = 'major'
+                $reason = 'major PR label'
+              }
+              elseif ($labels | Where-Object { $minorLabels -contains $_ }) {
+                $bump = 'minor'
+                $reason = 'minor/feature PR label'
+              }
+              elseif ($labels | Where-Object { $patchLabels -contains $_ }) {
+                $bump = 'patch'
+                $reason = 'patch PR label'
+              }
+              elseif ($prTitle -match '^(feat|feature)(\([^)]*\))?!?:' -or $subject -match '^(feat|feature)(\([^)]*\))?!?:') {
+                $bump = 'minor'
+                $reason = 'feature-style title/commit'
+              }
+              else {
+                $bump = 'patch'
+                $reason = 'automatic main release'
+              }
+            }
+
+            $nextText = switch ($bump) {
+              'major' { "$($currentVersion.Major + 1).0.0" }
+              'minor' { "$($currentVersion.Major).$($currentVersion.Minor + 1).0" }
+              'patch' { "$($currentVersion.Major).$($currentVersion.Minor).$($currentVersion.Build + 1)" }
+              default { throw "Unsupported bump '$bump'." }
+            }
+          }
+
+          "current=$currentText" >> $env:GITHUB_OUTPUT
+          "version=$nextText" >> $env:GITHUB_OUTPUT
+          "tag=v$nextText" >> $env:GITHUB_OUTPUT
+          "bump=$bump" >> $env:GITHUB_OUTPUT
+
+          $summary = @(
+            "### NitroPC Release Version",
+            "",
+            "``$currentText`` -> ``$nextText`` (${bump}: $reason)"
+          )
+          if ($prNumber) {
+            $summary += ""
+            $summary += "Source PR: #$prNumber $prTitle"
+          }
+          ($summary -join "`n") + "`n" >> $env:GITHUB_STEP_SUMMARY
+
+      - name: Verify formatting, build & test
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          dotnet restore NitroPC.sln
+          dotnet format NitroPC.sln --verify-no-changes --no-restore
+          dotnet build NitroPC.sln -c Release --no-restore --nologo
+          dotnet test NitroPC.sln -c Release --no-build --nologo
 
       - name: Publish release packages
         shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: |
-          $version = '${{ steps.version.outputs.version }}'
+          $ErrorActionPreference = 'Stop'
+          $version = $env:RELEASE_VERSION
           New-Item -ItemType Directory -Force artifacts | Out-Null
           $sumLines = @()
 
           foreach ($rid in @('win-x64', 'win-arm64')) {
             $appOutput = "artifacts\app-$rid"
             $updaterOutput = "artifacts\updater-$rid"
-            dotnet publish src\NitroPC\NitroPC.csproj -c Release -r $rid --self-contained false -o $appOutput -p:Version=$version
-            dotnet publish src\NitroPC.Updater\NitroPC.Updater.csproj -c Release -r $rid --self-contained false -o $updaterOutput -p:Version=$version
+            dotnet publish src\NitroPC.Updater\NitroPC.Updater.csproj -c Release -r $rid --self-contained false -o $updaterOutput -p:Version=$version --nologo
+            dotnet publish src\NitroPC\NitroPC.csproj -c Release -r $rid --self-contained false -o $appOutput -p:Version=$version --nologo
 
-            Copy-Item "$updaterOutput\NitroPC.Updater.exe" $appOutput
-            Copy-Item "$updaterOutput\NitroPC.Updater.dll" $appOutput
-            Copy-Item "$updaterOutput\NitroPC.Updater.deps.json" $appOutput
-            Copy-Item "$updaterOutput\NitroPC.Updater.runtimeconfig.json" $appOutput
+            foreach ($ext in @('.exe', '.dll', '.deps.json', '.runtimeconfig.json')) {
+              Copy-Item "$updaterOutput\NitroPC.Updater$ext" $appOutput -Force
+            }
+
+            if (-not (Test-Path "$appOutput\NitroPC.exe") -or -not (Test-Path "$appOutput\NitroPC.Updater.exe")) {
+              throw "Missing NitroPC.exe or NitroPC.Updater.exe in $appOutput."
+            }
+
+            $stampedVersion = [System.Reflection.AssemblyName]::GetAssemblyName((Resolve-Path "$appOutput\NitroPC.dll")).Version
+            if ($stampedVersion -ne [Version]::Parse("$version.0")) {
+              throw "Expected assembly version $version.0 in $appOutput\NitroPC.dll, got $stampedVersion."
+            }
 
             $zipName = "NitroPC-$rid.zip"
             $zipPath = Join-Path "artifacts" $zipName
@@ -71,15 +253,69 @@ jobs:
             ($sumLines -join "`n") + "`n",
             [Text.UTF8Encoding]::new($false))
 
-      - name: Publish GitHub release
+      - name: Publish & verify GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          PREVIOUS_VERSION: ${{ steps.version.outputs.current }}
         shell: pwsh
         run: |
-          gh release create '${{ steps.version.outputs.tag }}' `
+          $ErrorActionPreference = 'Stop'
+          $version = $env:RELEASE_VERSION
+          $tag = $env:RELEASE_TAG
+          $prevTag = "v$($env:PREVIOUS_VERSION)"
+          $repoUrl = "$($env:GITHUB_SERVER_URL)/$($env:GITHUB_REPOSITORY)"
+
+          $notes = @(
+            "## Download NitroPC $version",
+            "",
+            "| Architecture | Download |",
+            "| --- | --- |",
+            "| **Windows x64** | [``NitroPC-win-x64.zip``]($repoUrl/releases/download/$tag/NitroPC-win-x64.zip) |",
+            "| **Windows ARM64** | [``NitroPC-win-arm64.zip``]($repoUrl/releases/download/$tag/NitroPC-win-arm64.zip) |",
+            "",
+            "Requires the **.NET 10 Windows Desktop Runtime**. Extract the ZIP for your architecture into ``%LOCALAPPDATA%\Programs\NitroPC`` and run ``NitroPC.exe``. Subsequent updates can be installed directly from **Settings -> Check for updates** inside NitroPC.",
+            "",
+            "---",
+            "",
+            "Built from commit [``$($env:GITHUB_SHA.Substring(0, 7))``]($repoUrl/commit/$($env:GITHUB_SHA))."
+          )
+
+          git rev-parse --verify "refs/tags/$prevTag" *> $null
+          if ($LASTEXITCODE -eq 0) {
+            $notes += ""
+            $notes += "[Changes since $prevTag]($repoUrl/compare/$prevTag...$tag)"
+          }
+
+          $notes += @(
+            "",
+            "### SHA-256 Verification",
+            "",
+            "Download [``SHA256SUMS.txt``]($repoUrl/releases/download/$tag/SHA256SUMS.txt) and compare:",
+            "",
+            '```powershell',
+            'Get-FileHash .\NitroPC-win-x64.zip -Algorithm SHA256',
+            '```'
+          )
+
+          [IO.File]::WriteAllText(
+            (Join-Path $PWD 'release-notes.md'),
+            ($notes -join "`n") + "`n",
+            [Text.UTF8Encoding]::new($false))
+
+          gh release create $tag `
             artifacts\NitroPC-win-x64.zip `
             artifacts\NitroPC-win-arm64.zip `
             artifacts\SHA256SUMS.txt `
             --target "$env:GITHUB_SHA" `
-            --title "NitroPC ${{ steps.version.outputs.version }}" `
-            --generate-notes
+            --title "NitroPC $version" `
+            --notes-file release-notes.md `
+            --latest
+
+          $uploaded = gh api "repos/$($env:GITHUB_REPOSITORY)/releases/tags/$tag" | ConvertFrom-Json
+          $assetNames = @($uploaded.assets | ForEach-Object { $_.name } | Sort-Object)
+          $expectedNames = @('NitroPC-win-arm64.zip', 'NitroPC-win-x64.zip', 'SHA256SUMS.txt')
+          if (($assetNames -join ',') -ne ($expectedNames -join ',')) {
+            throw "Unexpected release assets: $($assetNames -join ', ')"
+          }

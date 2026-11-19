@@ -76,7 +76,7 @@ internal static class UpdaterMain
         {
             if (Directory.Exists(installPath))
             {
-                Directory.Move(installPath, backupPath);
+                await MoveDirectoryWithRetryAsync(installPath, backupPath);
                 movedOriginal = true;
             }
 
@@ -132,6 +132,24 @@ internal static class UpdaterMain
         catch (OperationCanceledException exception)
         {
             throw new InvalidOperationException("NitroPC did not exit in time for the update.", exception);
+        }
+    }
+
+    private static async Task MoveDirectoryWithRetryAsync(string sourcePath, string destinationPath)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                Directory.Move(sourcePath, destinationPath);
+                return;
+            }
+            catch (Exception exception) when (
+                attempt < 12 &&
+                exception is IOException or UnauthorizedAccessException)
+            {
+                await Task.Delay(250);
+            }
         }
     }
 

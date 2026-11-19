@@ -42,6 +42,7 @@ public sealed partial class ToolboxFlyoutWindow : Window
         _quietModeLevel = settings.QuietMode;
         InitializeComponent();
         InitializeProcessRows();
+        VersionText.Text = $"v{UpdateService.CurrentVersionText}";
         StartupToggle.IsChecked = new StartupService().IsEnabled();
         AutomaticUpdatesToggle.IsChecked = settings.AutomaticallyCheckForUpdates;
         PreviewKeyDown += OnPreviewKeyDown;

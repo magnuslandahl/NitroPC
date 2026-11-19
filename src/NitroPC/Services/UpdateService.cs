@@ -33,16 +33,19 @@ public sealed class UpdateService : IDisposable
     internal UpdateService(HttpClient httpClient, Version currentVersion)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-        _currentVersion = currentVersion;
+        _currentVersion = NormalizeVersion(currentVersion ?? throw new ArgumentNullException(nameof(currentVersion)));
         ConfigureHttpClient(_httpClient);
     }
+
+    public static string CurrentVersionText =>
+        FormatVersion(typeof(UpdateService).Assembly.GetName().Version ?? new Version(0, 0, 0));
 
     public async Task<UpdateCheckResult> CheckAsync(CancellationToken cancellationToken = default)
     {
         _pendingUpdate = null;
         try
         {
-            using var response = await GetAsync(LatestReleaseApi, cancellationToken);
+            using var response = await GetJsonAsync(LatestReleaseApi, cancellationToken);
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
                 return UpdateCheckResult.Failure(
@@ -148,7 +151,23 @@ public sealed class UpdateService : IDisposable
         }
     }
 
-    internal static bool IsNewer(Version candidate, Version current) => candidate > current;
+    internal static bool IsNewer(Version candidate, Version current) =>
+        NormalizeVersion(candidate) > NormalizeVersion(current);
+
+    internal static Version NormalizeVersion(Version version) =>
+        new(
+            Math.Max(0, version.Major),
+            Math.Max(0, version.Minor),
+            Math.Max(0, version.Build),
+            Math.Max(0, version.Revision));
+
+    internal static string FormatVersion(Version version)
+    {
+        var normalized = NormalizeVersion(version);
+        return normalized.Revision > 0
+            ? normalized.ToString(4)
+            : $"{normalized.Major}.{normalized.Minor}.{normalized.Build}";
+    }
 
     internal static Version? ParseVersion(string? text)
     {
@@ -157,7 +176,14 @@ public sealed class UpdateService : IDisposable
             return null;
         }
 
-        return Version.TryParse(text.Trim().TrimStart('v', 'V'), out var version)
+        var candidate = text.Trim();
+        var lastSpace = candidate.LastIndexOf(' ');
+        if (lastSpace >= 0 && lastSpace < candidate.Length - 1)
+        {
+            candidate = candidate[(lastSpace + 1)..];
+        }
+
+        return Version.TryParse(candidate.TrimStart('v', 'V'), out var version)
             ? version
             : null;
     }
@@ -175,6 +201,11 @@ public sealed class UpdateService : IDisposable
 
             var hash = line[..64];
             var fileName = line[64..].TrimStart().TrimStart('*');
+            if (fileName.StartsWith("./", StringComparison.Ordinal))
+            {
+                fileName = fileName[2..];
+            }
+
             if (string.Equals(fileName, assetName, StringComparison.Ordinal) &&
                 hash.All(uri => (uri >= '0' && uri <= '9') || (uri >= 'a' && uri <= 'f')))
             {
@@ -201,7 +232,8 @@ public sealed class UpdateService : IDisposable
         CancellationToken cancellationToken)
     {
         var releaseId = GetPositiveId(release, "id");
-        var version = ParseVersion(GetString(release, "tag_name"));
+        var version = ParseVersion(GetString(release, "tag_name"))
+            ?? ParseVersion(GetString(release, "name"));
         var pageUrl = GetString(release, "html_url") ?? ReleasePage;
         if (releaseId is null || version is null || !release.TryGetProperty("assets", out var assetsElement))
         {
@@ -221,7 +253,7 @@ public sealed class UpdateService : IDisposable
                 false,
                 false,
                 version,
-                $"NitroPC {_currentVersion.ToString(3)} is up to date.",
+                $"NitroPC {FormatVersion(_currentVersion)} is up to date.",
                 pageUrl)
             {
                 ReleaseId = releaseId
@@ -301,7 +333,7 @@ public sealed class UpdateService : IDisposable
         string expectedAssetName,
         CancellationToken cancellationToken)
     {
-        using var response = await GetAsync(AssetApiUrl(checksumAssetId), cancellationToken);
+        using var response = await GetBinaryAsync(AssetApiUrl(checksumAssetId), cancellationToken);
         response.EnsureSuccessStatusCode();
         var bytes = await ReadLimitedAsync(
             response.Content,
@@ -320,7 +352,7 @@ public sealed class UpdateService : IDisposable
         IProgress<double>? progress,
         CancellationToken cancellationToken)
     {
-        using var response = await GetAsync(uri, cancellationToken);
+        using var response = await GetBinaryAsync(uri, cancellationToken);
         response.EnsureSuccessStatusCode();
         var actualLength = response.Content.Headers.ContentLength;
         if (actualLength is > MaximumPackageBytes || expectedSize > MaximumPackageBytes ||
@@ -476,18 +508,24 @@ public sealed class UpdateService : IDisposable
         }
     }
 
-    private async Task<HttpResponseMessage> GetAsync(
+    private async Task<HttpResponseMessage> GetJsonAsync(
         string uri,
-        CancellationToken cancellationToken) =>
-        await GetAsync(new Uri(uri), cancellationToken);
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(uri));
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
+        return await _httpClient.SendAsync(
+            request,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken);
+    }
 
-    private async Task<HttpResponseMessage> GetAsync(
+    private async Task<HttpResponseMessage> GetBinaryAsync(
         Uri uri,
         CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, uri);
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/octet-stream"));
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
         return await _httpClient.SendAsync(
             request,
             HttpCompletionOption.ResponseHeadersRead,

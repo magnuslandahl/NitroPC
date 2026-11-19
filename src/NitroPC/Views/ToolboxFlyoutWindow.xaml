@@ -479,12 +479,21 @@
                     </StackPanel>
                 </Border>
 
-                <TextBlock Margin="2,12,0,6"
-                           Text="SYSTEM &amp; UPDATES"
-                           FontFamily="{StaticResource NitroFont}"
-                           FontSize="10"
-                           FontWeight="Bold"
-                           Foreground="{StaticResource TextMutedBrush}"/>
+                <Grid Margin="2,12,2,6">
+                    <TextBlock Text="SYSTEM &amp; UPDATES"
+                               FontFamily="{StaticResource NitroFont}"
+                               FontSize="10"
+                               FontWeight="Bold"
+                               Foreground="{StaticResource TextMutedBrush}"/>
+                    <TextBlock x:Name="VersionText"
+                               HorizontalAlignment="Right"
+                               Text="v0.1.0"
+                               FontFamily="{StaticResource NitroFont}"
+                               FontSize="10"
+                               FontWeight="SemiBold"
+                               Typography.NumeralAlignment="Tabular"
+                               Foreground="{StaticResource TextMutedBrush}"/>
+                </Grid>
 
                 <Border Padding="12,10"
                         Background="{StaticResource CardBackgroundBrush}"

@@ -23,14 +23,15 @@
 
   <Target Name="CopyNitroUpdater" AfterTargets="Build">
     <ItemGroup>
-      <NitroUpdaterFiles Include="..\NitroPC.Updater\bin\$(Configuration)\net10.0-windows\NitroPC.Updater.exe"/>
-      <NitroUpdaterFiles Include="..\NitroPC.Updater\bin\$(Configuration)\net10.0-windows\NitroPC.Updater.dll"/>
-      <NitroUpdaterFiles Include="..\NitroPC.Updater\bin\$(Configuration)\net10.0-windows\NitroPC.Updater.deps.json"/>
-      <NitroUpdaterFiles Include="..\NitroPC.Updater\bin\$(Configuration)\net10.0-windows\NitroPC.Updater.runtimeconfig.json"/>
+      <NitroUpdaterFiles Include="..\NitroPC.Updater\bin\$(Configuration)\net10.0-windows\NitroPC.Updater.exe" Condition="Exists('..\NitroPC.Updater\bin\$(Configuration)\net10.0-windows\NitroPC.Updater.exe')"/>
+      <NitroUpdaterFiles Include="..\NitroPC.Updater\bin\$(Configuration)\net10.0-windows\NitroPC.Updater.dll" Condition="Exists('..\NitroPC.Updater\bin\$(Configuration)\net10.0-windows\NitroPC.Updater.dll')"/>
+      <NitroUpdaterFiles Include="..\NitroPC.Updater\bin\$(Configuration)\net10.0-windows\NitroPC.Updater.deps.json" Condition="Exists('..\NitroPC.Updater\bin\$(Configuration)\net10.0-windows\NitroPC.Updater.deps.json')"/>
+      <NitroUpdaterFiles Include="..\NitroPC.Updater\bin\$(Configuration)\net10.0-windows\NitroPC.Updater.runtimeconfig.json" Condition="Exists('..\NitroPC.Updater\bin\$(Configuration)\net10.0-windows\NitroPC.Updater.runtimeconfig.json')"/>
     </ItemGroup>
     <Copy SourceFiles="@(NitroUpdaterFiles)"
           DestinationFolder="$(TargetDir)"
-          SkipUnchangedFiles="true"/>
+          SkipUnchangedFiles="true"
+          Condition="'@(NitroUpdaterFiles)' != ''"/>
   </Target>
 
 </Project>

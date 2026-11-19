@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build, test & verify packages
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore dependencies
+        run: dotnet restore NitroPC.sln
+
+      - name: Verify formatting
+        run: dotnet format NitroPC.sln --verify-no-changes --no-restore
+
+      - name: Build Release
+        run: dotnet build NitroPC.sln -c Release --no-restore --nologo
+
+      - name: Run unit tests
+        run: dotnet test NitroPC.sln -c Release --no-build --nologo
+
+      - name: Smoke-publish release packages
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($rid in @('win-x64', 'win-arm64')) {
+            $updaterOut = "artifacts\updater-$rid"
+            $appOut = "artifacts\app-$rid"
+            dotnet publish src\NitroPC.Updater\NitroPC.Updater.csproj -c Release -r $rid --self-contained false -o $updaterOut -p:Version=0.0.1 --nologo
+            dotnet publish src\NitroPC\NitroPC.csproj -c Release -r $rid --self-contained false -o $appOut -p:Version=0.0.1 --nologo
+            foreach ($ext in @('.exe', '.dll', '.deps.json', '.runtimeconfig.json')) {
+              Copy-Item "$updaterOut\NitroPC.Updater$ext" $appOut -Force
+            }
+            if (-not (Test-Path "$appOut\NitroPC.exe") -or -not (Test-Path "$appOut\NitroPC.Updater.exe")) {
+              throw "Published bundle for $rid is missing NitroPC.exe or NitroPC.Updater.exe."
+            }
+          }
