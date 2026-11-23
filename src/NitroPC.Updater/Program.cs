@@ -1,5 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Security;
+using Microsoft.Win32;
 
 return await UpdaterMain.RunAsync(args);
 
@@ -81,6 +83,7 @@ internal static class UpdaterMain
             }
 
             CopyDirectory(stagedPath, installPath);
+            TryRefreshUninstallVersion(Path.Combine(installPath, executableName));
             Process.Start(new ProcessStartInfo
             {
                 FileName = Path.Combine(installPath, executableName),
@@ -150,6 +153,38 @@ internal static class UpdaterMain
             {
                 await Task.Delay(250);
             }
+        }
+    }
+
+    private static void TryRefreshUninstallVersion(string executablePath)
+    {
+        const string uninstallKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\NitroPC_is1";
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(uninstallKeyPath, writable: true);
+            if (key is null)
+            {
+                return;
+            }
+
+            var rawVersion = FileVersionInfo.GetVersionInfo(executablePath).ProductVersion;
+            if (string.IsNullOrWhiteSpace(rawVersion))
+            {
+                return;
+            }
+
+            var plusIndex = rawVersion.IndexOf('+');
+            var cleanVersion = plusIndex > 0 ? rawVersion[..plusIndex] : rawVersion;
+            key.SetValue("DisplayVersion", cleanVersion, RegistryValueKind.String);
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+        catch (SecurityException)
+        {
         }
     }
 

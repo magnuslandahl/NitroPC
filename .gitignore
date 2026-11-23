@@ -5,6 +5,7 @@
 [Ll]ogs/
 out/
 publish/
+artifacts/
 TestResults/
 
 # Visual Studio / Rider / VS Code

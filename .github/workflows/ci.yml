@@ -14,10 +14,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-test:
-    name: Build, test & verify packages
+  ci:
+    name: CI
     runs-on: windows-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -37,19 +37,24 @@ jobs:
       - name: Run unit tests
         run: dotnet test NitroPC.sln -c Release --no-build --nologo
 
-      - name: Smoke-publish release packages
+      - name: Build installers & update packages
+        shell: pwsh
+        run: .\installer\build-release-packages.ps1 -Version 0.0.1 -OutputDir artifacts
+
+      - name: Smoke-test Windows installer & uninstaller
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          foreach ($rid in @('win-x64', 'win-arm64')) {
-            $updaterOut = "artifacts\updater-$rid"
-            $appOut = "artifacts\app-$rid"
-            dotnet publish src\NitroPC.Updater\NitroPC.Updater.csproj -c Release -r $rid --self-contained false -o $updaterOut -p:Version=0.0.1 --nologo
-            dotnet publish src\NitroPC\NitroPC.csproj -c Release -r $rid --self-contained false -o $appOut -p:Version=0.0.1 --nologo
-            foreach ($ext in @('.exe', '.dll', '.deps.json', '.runtimeconfig.json')) {
-              Copy-Item "$updaterOut\NitroPC.Updater$ext" $appOut -Force
-            }
-            if (-not (Test-Path "$appOut\NitroPC.exe") -or -not (Test-Path "$appOut\NitroPC.Updater.exe")) {
-              throw "Published bundle for $rid is missing NitroPC.exe or NitroPC.Updater.exe."
-            }
+          $smokeDir = Join-Path $env:RUNNER_TEMP 'NitroPC-SmokeInstall'
+          $setup = Resolve-Path 'artifacts\NitroPC-win-x64-Setup.exe'
+          $installProc = Start-Process -FilePath $setup.Path -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/TASKS=""', "/DIR=`"$smokeDir`"") -Wait -PassThru
+          if ($installProc.ExitCode -ne 0) {
+            throw "Silent installer failed with exit code $($installProc.ExitCode)."
+          }
+          if (-not (Test-Path "$smokeDir\NitroPC.exe") -or -not (Test-Path "$smokeDir\NitroPC.Updater.exe") -or -not (Test-Path "$smokeDir\unins000.exe")) {
+            throw "Installer did not lay down expected files in '$smokeDir'."
+          }
+          $uninstallProc = Start-Process -FilePath "$smokeDir\unins000.exe" -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART') -Wait -PassThru
+          if ($uninstallProc.ExitCode -ne 0) {
+            throw "Silent uninstaller failed with exit code $($uninstallProc.ExitCode)."
           }

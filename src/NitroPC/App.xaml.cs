@@ -120,6 +120,13 @@ public partial class App : WpfApplication
         _stripWindow.ToggleKeepAwakeRequested += ToggleKeepAwake;
         _stripWindow.ContextMenuRequested += () => _trayIconService!.ShowContextMenu();
         _stripWindow.DockingHidden += () => _flyoutWindow!.Hide();
+        _stripWindow.Closed += (_, _) =>
+        {
+            if (!_isShuttingDown)
+            {
+                Shutdown();
+            }
+        };
 
         _flyoutWindow!.SettingsChanged += OnSettingsChanged;
         _flyoutWindow.KeepAwakeStartRequested += StartKeepAwake;

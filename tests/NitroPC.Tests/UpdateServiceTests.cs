@@ -35,6 +35,8 @@ public sealed class UpdateServiceTests
     public async Task NewReleaseBindsImmutableAssetAndChecksum()
     {
         var installerName = UpdateService.AssetNameForCurrentArchitecture();
+        var installerExeName = installerName.Replace(".zip", "-Setup.exe", StringComparison.Ordinal);
+        var setupChecksum = new string('b', 64);
         var checksum = new string('a', 64);
         var latest = $$"""
             {
@@ -42,12 +44,14 @@ public sealed class UpdateServiceTests
               "tag_name": "v0.2.0",
               "html_url": "https://github.com/magnuslandahl/NitroPC/releases/tag/v0.2.0",
               "assets": [
+                { "id": 200, "name": "{{installerExeName}}", "size": 82000000 },
                 { "id": 201, "name": "{{installerName}}", "size": 1234 },
-                { "id": 202, "name": "SHA256SUMS.txt", "size": 90 }
+                { "id": 202, "name": "SHA256SUMS.txt", "size": 190 }
               ]
             }
             """;
-        using var client = new HttpClient(new ReleaseHandler(latest, $"{checksum}  {installerName}\n"));
+        var manifest = $"{setupChecksum}  {installerExeName}\n{checksum}  {installerName}\n";
+        using var client = new HttpClient(new ReleaseHandler(latest, manifest));
         using var service = new UpdateService(client, new Version(0, 1, 0));
 
         var result = await service.CheckAsync();

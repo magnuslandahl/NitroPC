@@ -10,6 +10,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>NitroPC</AssemblyName>
     <RootNamespace>NitroPC</RootNamespace>
+    <ApplicationIcon>Assets\NitroPC.ico</ApplicationIcon>
     <NoWarn>$(NoWarn);WFO0003</NoWarn>
     <Version>0.1.0</Version>
   </PropertyGroup>

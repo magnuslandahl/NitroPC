@@ -8,9 +8,9 @@
 
 [![CI](https://github.com/magnuslandahl/NitroPC/actions/workflows/ci.yml/badge.svg)](https://github.com/magnuslandahl/NitroPC/actions/workflows/ci.yml)
 
-**[Latest release](https://github.com/magnuslandahl/NitroPC/releases/latest)** ·
-[Windows x64 ZIP](https://github.com/magnuslandahl/NitroPC/releases/latest/download/NitroPC-win-x64.zip) ·
-[Windows ARM64 ZIP](https://github.com/magnuslandahl/NitroPC/releases/latest/download/NitroPC-win-arm64.zip) ·
+**[Download Windows x64 Installer](https://github.com/magnuslandahl/NitroPC/releases/latest/download/NitroPC-win-x64-Setup.exe)** ·
+[Windows ARM64 Installer](https://github.com/magnuslandahl/NitroPC/releases/latest/download/NitroPC-win-arm64-Setup.exe) ·
+[Latest release](https://github.com/magnuslandahl/NitroPC/releases/latest) ·
 [Checksums (`SHA256SUMS.txt`)](https://github.com/magnuslandahl/NitroPC/releases/latest/download/SHA256SUMS.txt)
 
 <p align="center">
@@ -28,14 +28,14 @@
 
 ## Install & Update
 
-Requires Windows 11 and the **.NET 10 Windows Desktop Runtime**. Extract the archive for your architecture into a user-writable folder such as `%LOCALAPPDATA%\Programs\NitroPC` and launch `NitroPC.exe`.
+Everything is bundled inside the installer (self-contained `.NET 10` runtime — nothing else to install, and no administrator elevation required). The installer places NitroPC in `%LOCALAPPDATA%\Programs\NitroPC`, adds a Start Menu shortcut and Windows **Installed apps** entry, optionally enables **Start with Windows**, and launches the taskbar strip.
 
-| Platform | Package | Verification |
-| --- | --- | --- |
-| **Windows 11 x64** | [`NitroPC-win-x64.zip`](https://github.com/magnuslandahl/NitroPC/releases/latest/download/NitroPC-win-x64.zip) | Compare `Get-FileHash .\NitroPC-win-x64.zip -Algorithm SHA256` against [`SHA256SUMS.txt`](https://github.com/magnuslandahl/NitroPC/releases/latest/download/SHA256SUMS.txt) |
-| **Windows 11 ARM64** | [`NitroPC-win-arm64.zip`](https://github.com/magnuslandahl/NitroPC/releases/latest/download/NitroPC-win-arm64.zip) | Compare `Get-FileHash .\NitroPC-win-arm64.zip -Algorithm SHA256` against [`SHA256SUMS.txt`](https://github.com/magnuslandahl/NitroPC/releases/latest/download/SHA256SUMS.txt) |
+| Platform | Installer (Recommended) | Portable / Update ZIP | First launch |
+| --- | --- | --- | --- |
+| **Windows 11 x64** | [`NitroPC-win-x64-Setup.exe`](https://github.com/magnuslandahl/NitroPC/releases/latest/download/NitroPC-win-x64-Setup.exe) | [`NitroPC-win-x64.zip`](https://github.com/magnuslandahl/NitroPC/releases/latest/download/NitroPC-win-x64.zip) | Open the installer. At **Windows protected your PC**, choose **More info → Run anyway**, then finish setup. |
+| **Windows 11 ARM64** | [`NitroPC-win-arm64-Setup.exe`](https://github.com/magnuslandahl/NitroPC/releases/latest/download/NitroPC-win-arm64-Setup.exe) | [`NitroPC-win-arm64.zip`](https://github.com/magnuslandahl/NitroPC/releases/latest/download/NitroPC-win-arm64.zip) | Same as x64. |
 
-Subsequent releases install in place from **Settings → Check for updates** (or the tray menu) after user confirmation. Windows builds are currently unsigned, so SmartScreen may prompt on first launch (**More info → Run anyway**).
+Verify any download against [`SHA256SUMS.txt`](https://github.com/magnuslandahl/NitroPC/releases/latest/download/SHA256SUMS.txt) (`Get-FileHash .\NitroPC-win-x64-Setup.exe -Algorithm SHA256`). Subsequent releases install in place from **Settings → Check for updates** (or the tray menu) after confirmation.
 
 ## Architecture & Privacy
 

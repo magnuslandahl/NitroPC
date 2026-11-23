@@ -456,17 +456,16 @@ public sealed class UpdateService : IDisposable
             Path.GetTempPath(),
             "NitroPC-Update-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(updaterRunDirectory);
-        foreach (var extension in new[] { ".exe", ".dll", ".deps.json", ".runtimeconfig.json" })
+        File.Copy(updaterSource, Path.Combine(updaterRunDirectory, "NitroPC.Updater.exe"));
+        foreach (var extension in new[] { ".dll", ".deps.json", ".runtimeconfig.json" })
         {
             var source = Path.Combine(
                 AppContext.BaseDirectory,
                 "NitroPC.Updater" + extension);
-            if (!File.Exists(source))
+            if (File.Exists(source))
             {
-                throw new FileNotFoundException("A required updater component is missing.", source);
+                File.Copy(source, Path.Combine(updaterRunDirectory, Path.GetFileName(source)));
             }
-
-            File.Copy(source, Path.Combine(updaterRunDirectory, Path.GetFileName(source)));
         }
 
         var startInfo = new ProcessStartInfo

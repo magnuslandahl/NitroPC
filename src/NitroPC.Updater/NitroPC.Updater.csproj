@@ -6,5 +6,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>NitroPC.Updater</AssemblyName>
     <RootNamespace>NitroPC.Updater</RootNamespace>
+    <ApplicationIcon>..\NitroPC\Assets\NitroPC.ico</ApplicationIcon>
   </PropertyGroup>
 </Project>

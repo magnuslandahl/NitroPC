@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "src/**"
+      - "installer/**"
       - "NitroPC.sln"
       - ".github/workflows/release.yml"
   workflow_dispatch:
@@ -35,7 +36,7 @@ jobs:
   release:
     name: Build & publish GitHub Release
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
@@ -212,46 +213,11 @@ jobs:
           dotnet build NitroPC.sln -c Release --no-restore --nologo
           dotnet test NitroPC.sln -c Release --no-build --nologo
 
-      - name: Publish release packages
+      - name: Build installers & release packages
         shell: pwsh
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $version = $env:RELEASE_VERSION
-          New-Item -ItemType Directory -Force artifacts | Out-Null
-          $sumLines = @()
-
-          foreach ($rid in @('win-x64', 'win-arm64')) {
-            $appOutput = "artifacts\app-$rid"
-            $updaterOutput = "artifacts\updater-$rid"
-            dotnet publish src\NitroPC.Updater\NitroPC.Updater.csproj -c Release -r $rid --self-contained false -o $updaterOutput -p:Version=$version --nologo
-            dotnet publish src\NitroPC\NitroPC.csproj -c Release -r $rid --self-contained false -o $appOutput -p:Version=$version --nologo
-
-            foreach ($ext in @('.exe', '.dll', '.deps.json', '.runtimeconfig.json')) {
-              Copy-Item "$updaterOutput\NitroPC.Updater$ext" $appOutput -Force
-            }
-
-            if (-not (Test-Path "$appOutput\NitroPC.exe") -or -not (Test-Path "$appOutput\NitroPC.Updater.exe")) {
-              throw "Missing NitroPC.exe or NitroPC.Updater.exe in $appOutput."
-            }
-
-            $stampedVersion = [System.Reflection.AssemblyName]::GetAssemblyName((Resolve-Path "$appOutput\NitroPC.dll")).Version
-            if ($stampedVersion -ne [Version]::Parse("$version.0")) {
-              throw "Expected assembly version $version.0 in $appOutput\NitroPC.dll, got $stampedVersion."
-            }
-
-            $zipName = "NitroPC-$rid.zip"
-            $zipPath = Join-Path "artifacts" $zipName
-            Compress-Archive -Path "$appOutput\*" -DestinationPath $zipPath -Force
-            $hash = (Get-FileHash $zipPath -Algorithm SHA256).Hash.ToLowerInvariant()
-            $sumLines += "$hash  $zipName"
-          }
-
-          [IO.File]::WriteAllText(
-            (Join-Path $PWD 'artifacts\SHA256SUMS.txt'),
-            ($sumLines -join "`n") + "`n",
-            [Text.UTF8Encoding]::new($false))
+        run: .\installer\build-release-packages.ps1 -Version $env:RELEASE_VERSION -OutputDir artifacts
 
       - name: Publish & verify GitHub Release
         env:
@@ -270,12 +236,14 @@ jobs:
           $notes = @(
             "## Download NitroPC $version",
             "",
-            "| Architecture | Download |",
-            "| --- | --- |",
-            "| **Windows x64** | [``NitroPC-win-x64.zip``]($repoUrl/releases/download/$tag/NitroPC-win-x64.zip) |",
-            "| **Windows ARM64** | [``NitroPC-win-arm64.zip``]($repoUrl/releases/download/$tag/NitroPC-win-arm64.zip) |",
+            "Pick the installer for your PC — **everything is included** (self-contained runtime, Start Menu shortcut, optional Windows startup, and in-app updates; no administrator prompt required).",
             "",
-            "Requires the **.NET 10 Windows Desktop Runtime**. Extract the ZIP for your architecture into ``%LOCALAPPDATA%\Programs\NitroPC`` and run ``NitroPC.exe``. Subsequent updates can be installed directly from **Settings -> Check for updates** inside NitroPC.",
+            "| Your PC | Installer (Recommended) | Portable / Update ZIP |",
+            "| --- | --- | --- |",
+            "| **Windows 11 (x64)** | [``NitroPC-win-x64-Setup.exe``]($repoUrl/releases/download/$tag/NitroPC-win-x64-Setup.exe) | [``NitroPC-win-x64.zip``]($repoUrl/releases/download/$tag/NitroPC-win-x64.zip) |",
+            "| **Windows 11 (ARM64)** | [``NitroPC-win-arm64-Setup.exe``]($repoUrl/releases/download/$tag/NitroPC-win-arm64-Setup.exe) | [``NitroPC-win-arm64.zip``]($repoUrl/releases/download/$tag/NitroPC-win-arm64.zip) |",
+            "",
+            "**Current Windows installers are unsigned**, so Windows SmartScreen shows a first-run prompt (**More info -> Run anyway**). Subsequent updates can be installed directly from **Settings -> Check for updates** inside NitroPC.",
             "",
             "---",
             "",
@@ -295,7 +263,7 @@ jobs:
             "Download [``SHA256SUMS.txt``]($repoUrl/releases/download/$tag/SHA256SUMS.txt) and compare:",
             "",
             '```powershell',
-            'Get-FileHash .\NitroPC-win-x64.zip -Algorithm SHA256',
+            'Get-FileHash .\NitroPC-win-x64-Setup.exe -Algorithm SHA256',
             '```'
           )
 
@@ -305,6 +273,8 @@ jobs:
             [Text.UTF8Encoding]::new($false))
 
           gh release create $tag `
+            artifacts\NitroPC-win-x64-Setup.exe `
+            artifacts\NitroPC-win-arm64-Setup.exe `
             artifacts\NitroPC-win-x64.zip `
             artifacts\NitroPC-win-arm64.zip `
             artifacts\SHA256SUMS.txt `
@@ -315,7 +285,13 @@ jobs:
 
           $uploaded = gh api "repos/$($env:GITHUB_REPOSITORY)/releases/tags/$tag" | ConvertFrom-Json
           $assetNames = @($uploaded.assets | ForEach-Object { $_.name } | Sort-Object)
-          $expectedNames = @('NitroPC-win-arm64.zip', 'NitroPC-win-x64.zip', 'SHA256SUMS.txt')
+          $expectedNames = @(
+            'NitroPC-win-arm64-Setup.exe',
+            'NitroPC-win-arm64.zip',
+            'NitroPC-win-x64-Setup.exe',
+            'NitroPC-win-x64.zip',
+            'SHA256SUMS.txt'
+          )
           if (($assetNames -join ',') -ne ($expectedNames -join ',')) {
             throw "Unexpected release assets: $($assetNames -join ', ')"
           }

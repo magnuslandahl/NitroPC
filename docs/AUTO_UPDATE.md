@@ -25,23 +25,31 @@ both the toolbox and tray menu.
 
 - **`.github/workflows/ci.yml`** runs on every pull request and push to `main`,
   verifying formatting (`dotnet format --verify-no-changes`), Release build,
-  unit tests, and `win-x64` / `win-arm64` bundle publishing.
+  unit tests, self-contained `win-x64` / `win-arm64` installers + ZIP bundles,
+  and a silent install/uninstall smoke test.
 - **`.github/workflows/release.yml`** runs **automatically** on pushes to `main`
-  that touch `src/**`, `NitroPC.sln`, or `release.yml` (and can also be run
-  manually via `workflow_dispatch` with a `patch` / `minor` / `major` bump or
-  explicit version). It calculates the next semantic `vX.Y.Z` version from the
-  highest existing release tag (or `<Version>` baseline), stamps `-p:Version`
-  into the binaries, and publishes:
-  - `NitroPC-win-x64.zip`
-  - `NitroPC-win-arm64.zip`
+  that touch `src/**`, `installer/**`, `NitroPC.sln`, or `release.yml` (and can
+  also be run manually via `workflow_dispatch` with a `patch` / `minor` / `major`
+  bump or explicit version). It runs `installer/build-release-packages.ps1` to
+  calculate and stamp the next semantic `vX.Y.Z` version and publish:
+  - `NitroPC-win-x64-Setup.exe` (per-user self-contained Inno Setup installer)
+  - `NitroPC-win-arm64-Setup.exe` (per-user self-contained Inno Setup installer)
+  - `NitroPC-win-x64.zip` (self-contained portable & in-app update bundle)
+  - `NitroPC-win-arm64.zip` (self-contained portable & in-app update bundle)
   - `SHA256SUMS.txt`
 
-Each ZIP contains `NitroPC.exe`, the WPF/runtime files, and the four
-`NitroPC.Updater` files. `UpdateService` queries `/releases/latest` with
-`Accept: application/vnd.github+json` and downloads `SHA256SUMS.txt` and the
-selected ZIP from `/releases/assets/{id}` with `Accept: application/octet-stream`.
+Each bundle is **self-contained** (including the `.NET 10` runtime and a
+standalone single-file `NitroPC.Updater.exe`) so users do not need to install
+any `.NET` runtime separately. `NitroPC-win-<arch>-Setup.exe` installs per-user
+(`PrivilegesRequired=lowest`) directly into `%LOCALAPPDATA%\Programs\NitroPC`,
+creates Start Menu and Installed Apps entries, and refreshes `DisplayVersion`
+automatically when updated in-app. `UpdateService` queries `/releases/latest`
+with `Accept: application/vnd.github+json` and downloads `SHA256SUMS.txt` and the
+selected `.zip` from `/releases/assets/{id}` with
+`Accept: application/octet-stream`.
 
-The first release must be installed manually. Updates can replace an existing
-installation only where the current Windows user can write the application
-directory; the recommended location is a user-owned folder such as
-`%LOCALAPPDATA%\Programs\NitroPC`.
+For initial installation, run `NitroPC-win-x64-Setup.exe` or
+`NitroPC-win-arm64-Setup.exe` (or extract the portable ZIP into a user-writable
+folder such as `%LOCALAPPDATA%\Programs\NitroPC`). In-app updates can replace an
+existing installation wherever the current Windows user can write the
+application directory.
