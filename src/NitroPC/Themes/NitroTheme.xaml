@@ -109,4 +109,25 @@
             </Setter.Value>
         </Setter>
     </Style>
+    <Style x:Key="NitroToolTip" TargetType="ToolTip">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="HasDropShadow" Value="True"/>
+        <Setter Property="FontFamily" Value="{StaticResource NitroFont}"/>
+        <Setter Property="FontSize" Value="11.5"/>
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToolTip">
+                    <Border Margin="4"
+                            Padding="10,6"
+                            Background="{StaticResource FlyoutBackgroundBrush}"
+                            BorderBrush="{StaticResource FlyoutBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="7">
+                        <ContentPresenter/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 </ResourceDictionary>

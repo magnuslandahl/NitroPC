@@ -1,10 +1,13 @@
 using System.Globalization;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using NitroPC.Interop;
 using NitroPC.Models;
 using NitroPC.Services;
@@ -32,6 +35,7 @@ public sealed partial class ToolboxFlyoutWindow : Window
     private readonly List<ProcessRowElements> _processRows = new(5);
     private MetricsSnapshot? _latestMetrics;
     private NativeMethods.RECT? _lastStripPhysicalRect;
+    private DateTime _lastOpenedFromTrayUtc = DateTime.MinValue;
     private QuietModeLevel _quietModeLevel;
     private bool _isBoostDisabled;
     private bool _isAwake;
@@ -220,6 +224,12 @@ public sealed partial class ToolboxFlyoutWindow : Window
 
     internal void ToggleNearStrip(NativeMethods.RECT stripPhysicalRect)
     {
+        if (stripPhysicalRect.Width <= 0 || stripPhysicalRect.Height <= 0)
+        {
+            ToggleFromTray(WinForms.Cursor.Position);
+            return;
+        }
+
         if (IsVisible)
         {
             SetSettingsDrawerOpen(false, animate: false);
@@ -237,6 +247,83 @@ public sealed partial class ToolboxFlyoutWindow : Window
         Show();
         UpdateLayout();
         PositionNearStrip(stripPhysicalRect, animateHorizontal: false);
+        BringToFrontAndActivate();
+    }
+
+    internal void ToggleFromTray(System.Drawing.Point clickPhysicalPoint)
+    {
+        if (IsVisible)
+        {
+            // Keep open and focused if the user double-clicked the notification area icon.
+            if ((DateTime.UtcNow - _lastOpenedFromTrayUtc).TotalMilliseconds < 400)
+            {
+                BringToFrontAndActivate();
+                return;
+            }
+
+            SetSettingsDrawerOpen(false, animate: false);
+            Hide();
+            return;
+        }
+
+        if ((DateTime.UtcNow - LastDeactivatedUtc).TotalMilliseconds < 180)
+        {
+            return;
+        }
+
+        _lastOpenedFromTrayUtc = DateTime.UtcNow;
+        SetSettingsDrawerOpen(false, animate: false);
+        Show();
+        UpdateLayout();
+        var anchorRect = BuildTrayAnchorRect(clickPhysicalPoint);
+        _lastStripPhysicalRect = anchorRect;
+        PositionNearStrip(anchorRect, animateHorizontal: false);
+        BringToFrontAndActivate();
+    }
+
+    private NativeMethods.RECT BuildTrayAnchorRect(System.Drawing.Point clickPoint)
+    {
+        var dpi = VisualTreeHelper.GetDpi(this);
+        var screen = WinForms.Screen.FromPoint(clickPoint);
+        var collapsedWidthPhysical = (int)Math.Ceiling(CollapsedCardOuterWidthDip * dpi.DpiScaleX);
+
+        var taskbarTop = screen.WorkingArea.Bottom;
+        if (taskbarTop >= screen.Bounds.Bottom)
+        {
+            var shellTray = NativeMethods.FindWindow("Shell_TrayWnd", null);
+            if (shellTray != IntPtr.Zero &&
+                NativeMethods.GetWindowRect(shellTray, out var shellRect) &&
+                shellRect.Top > screen.Bounds.Top + screen.Bounds.Height / 2 &&
+                shellRect.Top < screen.Bounds.Bottom &&
+                shellRect.Right > screen.Bounds.Left &&
+                shellRect.Left < screen.Bounds.Right)
+            {
+                taskbarTop = shellRect.Top;
+            }
+            else if (screen.WorkingArea.Top == screen.Bounds.Top)
+            {
+                taskbarTop = screen.Bounds.Bottom - (int)Math.Round(48 * dpi.DpiScaleY);
+            }
+        }
+
+        var halfWidth = collapsedWidthPhysical / 2;
+        return new NativeMethods.RECT
+        {
+            Left = clickPoint.X - halfWidth,
+            Top = taskbarTop,
+            Right = clickPoint.X + halfWidth,
+            Bottom = screen.Bounds.Bottom
+        };
+    }
+
+    private void BringToFrontAndActivate()
+    {
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd != IntPtr.Zero)
+        {
+            NativeMethods.SetForegroundWindow(hwnd);
+        }
+
         Activate();
     }
 
@@ -282,10 +369,50 @@ public sealed partial class ToolboxFlyoutWindow : Window
 
     protected override void OnDeactivated(EventArgs e)
     {
+        // When opening from Windows 11's "Show hidden icons" overflow popup, explorer.exe
+        // closes TopLevelWindowForOverflowXamlIsland right after WM_LBUTTONUP and momentarily
+        // transfers focus back to Shell_TrayWnd. Reclaim focus instead of closing immediately.
+        if ((DateTime.UtcNow - _lastOpenedFromTrayUtc).TotalMilliseconds < 350 &&
+            IsShellTrayOrOverflowForeground())
+        {
+            _ = Dispatcher.BeginInvoke(
+                () =>
+                {
+                    if (IsVisible)
+                    {
+                        BringToFrontAndActivate();
+                    }
+                },
+                DispatcherPriority.Input);
+            base.OnDeactivated(e);
+            return;
+        }
+
         LastDeactivatedUtc = DateTime.UtcNow;
         SetSettingsDrawerOpen(false, animate: false);
         Hide();
         base.OnDeactivated(e);
+    }
+
+    private static bool IsShellTrayOrOverflowForeground()
+    {
+        var foreground = NativeMethods.GetForegroundWindow();
+        if (foreground == IntPtr.Zero)
+        {
+            return true;
+        }
+
+        var builder = new StringBuilder(128);
+        if (NativeMethods.GetClassName(foreground, builder, builder.Capacity) <= 0)
+        {
+            return false;
+        }
+
+        var className = builder.ToString();
+        return string.Equals(className, "Shell_TrayWnd", StringComparison.Ordinal) ||
+            string.Equals(className, "TopLevelWindowForOverflowXamlIsland", StringComparison.Ordinal) ||
+            string.Equals(className, "NotifyIconOverflowWindow", StringComparison.Ordinal) ||
+            string.Equals(className, "XamlExplorerHostIslandWindow", StringComparison.Ordinal);
     }
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
