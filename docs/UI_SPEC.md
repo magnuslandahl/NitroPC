@@ -66,7 +66,7 @@ This document defines the exact visual design, layout metrics, colors, icons, an
 ### A. Taskbar Strip (`TaskbarStripWindow`)
 - **Outer Window Height**: Matches taskbar height dynamically (on standard Windows 11 taskbar = `48` DIPs; inner pill height = `36` DIPs, vertically centered, `CornerRadius="7"`, horizontal padding `10,0`).
 - **Width**: `SizeToContent="Width"` with fixed-width metric text columns so changing values never move the neighboring charts.
-- **Dock anchor**: `TaskbarObstacleScanner` queries Windows UI Automation button bounds inside `Shell_TrayWnd` on a background loop so `TaskbarLayout.FindRightAnchoredSlot` places the strip immediately to the left of `Widgets`/Weather and `TrayNotifyWnd` while never overlapping pinned or running app icons.
+- **Dock anchor & responsive compacting**: `TaskbarObstacleScanner` queries Windows UI Automation button bounds inside `Shell_TrayWnd` on a background loop so `TaskbarLayout.SelectResponsiveSlot` places the strip immediately to the left of `Widgets`/Weather and `TrayNotifyWnd` while never overlapping pinned or running app icons. When taskbar space tightens, the strip steps down automatically through 5 deterministic tiers (`Full` → `CompactGraphs` → `ReadoutsOnly` → `Mini` → `IconOnly` `36 DIP` pill) with `8 DIP` upgrade hysteresis to prevent oscillation, and exposes a branded Notification Area (`NotifyIcon`) icon that reliably opens the Toolbox popup above the system tray even when the taskbar is completely full.
 - **Horizontal Element Sequence** (gap `10` DIPs between sections):
   1. **CPU Unit**:
      - `CpuBarsControl`: `Width="48"`, `Height="18"`, up to **20 vertical rounded bars** on the strip (`30` in the flyout). The chart is bottom-aligned with the metric readout.

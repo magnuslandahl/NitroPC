@@ -119,7 +119,13 @@ public partial class App : WpfApplication
         _stripWindow!.ToggleFlyoutRequested += () => _flyoutWindow!.ToggleNearStrip(_stripWindow.PhysicalBounds);
         _stripWindow.ToggleKeepAwakeRequested += ToggleKeepAwake;
         _stripWindow.ContextMenuRequested += () => _trayIconService!.ShowContextMenu();
-        _stripWindow.DockingHidden += () => _flyoutWindow!.Hide();
+        _stripWindow.FullscreenEntered += () =>
+        {
+            if (_flyoutWindow is { IsVisible: true, IsActive: false })
+            {
+                _flyoutWindow.Hide();
+            }
+        };
         _stripWindow.Closed += (_, _) =>
         {
             if (!_isShuttingDown)
@@ -137,7 +143,8 @@ public partial class App : WpfApplication
         _flyoutWindow.CheckForUpdatesRequested += () => _ = CheckForUpdatesAsync(interactive: true);
         _flyoutWindow.QuitRequested += Shutdown;
 
-        _trayIconService!.OpenRequested += () => _flyoutWindow!.ToggleNearStrip(_stripWindow!.PhysicalBounds);
+        _trayIconService!.OpenRequested += clickPoint =>
+            Dispatcher.BeginInvoke(() => _flyoutWindow!.ToggleFromTray(clickPoint));
         _trayIconService.StartKeepAwakeRequested += StartKeepAwake;
         _trayIconService.StopKeepAwakeRequested += StopKeepAwake;
         _trayIconService.QuietModeChangedRequested += mode =>
@@ -194,6 +201,7 @@ public partial class App : WpfApplication
 
         _stripWindow?.UpdateMetrics(snapshot);
         _flyoutWindow?.UpdateMetrics(snapshot);
+        _trayIconService?.UpdateMetrics(snapshot);
     }
 
     private void OnSettingsChanged(NitroSettings settings)
@@ -350,11 +358,12 @@ public partial class App : WpfApplication
             return;
         }
 
+        _stripWindow?.UpdateQuietMode(_quietModeService.IsBoostDisabled);
         _flyoutWindow?.UpdateQuietMode(
             _quietModeService.Mode,
             _quietModeService.IsBoostDisabled,
             _quietModeService.AutoThresholdCelsius);
-        _trayIconService?.SetQuietMode(_quietModeService.Mode);
+        _trayIconService?.SetQuietMode(_quietModeService.Mode, _quietModeService.IsBoostDisabled);
     }
 
     private void RecoverQuietMode()

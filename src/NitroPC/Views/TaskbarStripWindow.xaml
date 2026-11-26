@@ -9,20 +9,31 @@
         ShowInTaskbar="False"
         ShowActivated="False"
         Topmost="True"
-        SizeToContent="Width"
         Height="48">
     <Border x:Name="RootBorder"
             Height="36"
             Opacity="0"
+            HorizontalAlignment="Center"
             VerticalAlignment="Center"
             CornerRadius="7"
             Padding="10,0"
-            Background="{StaticResource StripBackgroundBrush}"
             BorderBrush="{StaticResource StripBorderBrush}"
             BorderThickness="1"
-            Cursor="Hand">
+            Cursor="Hand"
+            ToolTipService.InitialShowDelay="350"
+            ToolTipService.BetweenShowDelay="100"
+            ToolTipService.Placement="Top"
+            ToolTipService.VerticalOffset="-6">
+        <Border.ToolTip>
+            <ToolTip Style="{StaticResource NitroToolTip}">
+                <TextBlock x:Name="StripToolTipText"
+                           Text="NitroPC — Click to open toolbox"
+                           Typography.NumeralAlignment="Tabular"/>
+            </ToolTip>
+        </Border.ToolTip>
         <Border.Style>
             <Style TargetType="Border">
+                <Setter Property="Background" Value="{StaticResource StripBackgroundBrush}"/>
                 <Style.Triggers>
                     <Trigger Property="IsMouseOver" Value="True">
                         <Setter Property="Background" Value="{StaticResource StripHoverBrush}"/>
@@ -30,162 +41,22 @@
                 </Style.Triggers>
             </Style>
         </Border.Style>
-        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <controls:CpuBarsControl x:Name="CpuBars"
-                                          Width="44"
-                                          Height="22"
-                                          MaxBars="20"
-                                          BarBrush="{StaticResource CpuCoralBrush}"
-                                          LatestBarBrush="{StaticResource CpuLatestBrush}"
-                                          VerticalAlignment="Center"/>
-                <Grid Margin="7,0,0,0" Width="32" Height="24" VerticalAlignment="Center">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="10"/>
-                        <RowDefinition Height="14"/>
-                    </Grid.RowDefinitions>
-                    <TextBlock Text="CPU"
-                               FontFamily="{StaticResource NitroFont}"
-                               FontSize="9"
-                               FontWeight="Bold"
-                               LineStackingStrategy="BlockLineHeight"
-                               LineHeight="10"
-                               VerticalAlignment="Top"
-                               TextAlignment="Left"
-                               Foreground="{StaticResource TextMutedBrush}"/>
-                    <TextBlock x:Name="CpuValue"
-                               Grid.Row="1"
-                               Text="0%"
-                               FontFamily="{StaticResource NitroFont}"
-                               FontSize="12.5"
-                               FontWeight="Bold"
-                               LineStackingStrategy="BlockLineHeight"
-                               LineHeight="14"
-                               VerticalAlignment="Bottom"
-                               Typography.NumeralAlignment="Tabular"
-                               TextAlignment="Left"
-                               Foreground="{StaticResource TextPrimaryBrush}"/>
-                </Grid>
-                <Grid x:Name="CpuSensorPanel"
-                      Margin="6,0,0,0"
-                      Width="54"
-                      Height="24"
-                      VerticalAlignment="Center">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="10"/>
-                        <RowDefinition Height="14"/>
-                    </Grid.RowDefinitions>
-                    <TextBlock x:Name="CpuTempValue"
-                               Text="—°C"
-                               FontFamily="{StaticResource NitroFont}"
-                               FontSize="9"
-                               FontWeight="Bold"
-                               LineStackingStrategy="BlockLineHeight"
-                               LineHeight="10"
-                               VerticalAlignment="Top"
-                               Typography.NumeralAlignment="Tabular"
-                               TextAlignment="Left"
-                               Foreground="#FFD6E2E8"/>
-                    <TextBlock x:Name="CpuFreqValue"
-                               Grid.Row="1"
-                               Text="— GHz"
-                               FontFamily="{StaticResource NitroFont}"
-                               FontSize="11.5"
-                               FontWeight="SemiBold"
-                               LineStackingStrategy="BlockLineHeight"
-                               LineHeight="14"
-                               VerticalAlignment="Bottom"
-                               Typography.NumeralAlignment="Tabular"
-                               TextAlignment="Left"
-                               Foreground="#FFBFD0D8"/>
-                </Grid>
-            </StackPanel>
-
-            <Border Width="1"
-                    Height="20"
-                    Margin="9,0,9,0"
-                    VerticalAlignment="Center"
-                    Background="{StaticResource DividerBrush}"/>
-
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <controls:RamSparklineControl x:Name="RamSparkline"
-                                               Width="42"
-                                               Height="22"
-                                               MaxSamples="20"
-                                               StrokeBrush="{StaticResource RamBlueBrush}"
-                                               FillBrush="{StaticResource RamFillBrush}"
-                                               GuideBrush="{StaticResource SparkGuideBrush}"
-                                               LatestPointBrush="{StaticResource RamLatestBrush}"
-                                               VerticalAlignment="Center"/>
-                <Grid x:Name="RamValuePanel"
-                      Margin="7,0,0,0"
-                      Width="32"
-                      Height="24"
-                      VerticalAlignment="Center">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="10"/>
-                        <RowDefinition Height="14"/>
-                    </Grid.RowDefinitions>
-                    <TextBlock Text="RAM"
-                               FontFamily="{StaticResource NitroFont}"
-                               FontSize="9"
-                               FontWeight="Bold"
-                               LineStackingStrategy="BlockLineHeight"
-                               LineHeight="10"
-                               VerticalAlignment="Top"
-                               TextAlignment="Left"
-                               Foreground="{StaticResource TextMutedBrush}"/>
-                    <TextBlock x:Name="RamValue"
-                               Grid.Row="1"
-                               Text="0%"
-                               FontFamily="{StaticResource NitroFont}"
-                               FontSize="12.5"
-                               FontWeight="Bold"
-                               LineStackingStrategy="BlockLineHeight"
-                               LineHeight="14"
-                               VerticalAlignment="Bottom"
-                               Typography.NumeralAlignment="Tabular"
-                               TextAlignment="Left"
-                               Foreground="{StaticResource TextPrimaryBrush}"/>
-                </Grid>
-            </StackPanel>
-
-            <Border x:Name="KeepAwakeDivider"
-                    Width="1"
-                    Height="20"
-                    Margin="9,0,9,0"
-                    VerticalAlignment="Center"
-                    Background="{StaticResource DividerBrush}"/>
-
-            <Border x:Name="KeepAwakeBadge"
-                    Height="28"
-                    Padding="7,0"
-                    VerticalAlignment="Center"
-                    CornerRadius="5"
-                    BorderThickness="1">
+        <Grid VerticalAlignment="Center">
+            <StackPanel x:Name="StandardStripPanel" Orientation="Horizontal" VerticalAlignment="Center">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Viewbox Width="14" Height="14" VerticalAlignment="Center">
-                        <Canvas Width="24" Height="24">
-                            <Path x:Name="KeepAwakeIconPath"
-                                  Data="M 17,8 H 18 A 4,4 0 1 1 18,16 H 17 M 3,8 H 17 V 17 A 4,4 0 0 1 13,21 H 7 A 4,4 0 0 1 3,17 Z M 6,2 V 4 M 10,2 V 4 M 14,2 V 4"
-                                  Stroke="{StaticResource KaffeIdleIconBrush}"
-                                  StrokeThickness="2.2"
-                                  StrokeStartLineCap="Round"
-                                  StrokeEndLineCap="Round"
-                                  StrokeLineJoin="Round"/>
-                        </Canvas>
-                    </Viewbox>
-                    <Grid x:Name="KeepAwakeText"
-                          Margin="6,0,0,0"
-                          Width="48"
-                          Height="24"
-                          VerticalAlignment="Center">
+                    <controls:CpuBarsControl x:Name="CpuBars"
+                                              Width="44"
+                                              Height="22"
+                                              MaxBars="20"
+                                              BarBrush="{StaticResource CpuCoralBrush}"
+                                              LatestBarBrush="{StaticResource CpuLatestBrush}"
+                                              VerticalAlignment="Center"/>
+                    <Grid x:Name="CpuValueGrid" Margin="7,0,0,0" Width="32" Height="24" VerticalAlignment="Center">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="10"/>
                             <RowDefinition Height="14"/>
                         </Grid.RowDefinitions>
-                        <TextBlock x:Name="KeepAwakeLabel"
-                                   Text="IDLE"
+                        <TextBlock Text="CPU"
                                    FontFamily="{StaticResource NitroFont}"
                                    FontSize="9"
                                    FontWeight="Bold"
@@ -194,9 +65,92 @@
                                    VerticalAlignment="Top"
                                    TextAlignment="Left"
                                    Foreground="{StaticResource TextMutedBrush}"/>
-                        <TextBlock x:Name="KeepAwakeValue"
+                        <TextBlock x:Name="CpuValue"
                                    Grid.Row="1"
-                                   Text="Off"
+                                   Text="0%"
+                                   FontFamily="{StaticResource NitroFont}"
+                                   FontSize="12.5"
+                                   FontWeight="Bold"
+                                   LineStackingStrategy="BlockLineHeight"
+                                   LineHeight="14"
+                                   VerticalAlignment="Bottom"
+                                   Typography.NumeralAlignment="Tabular"
+                                   TextAlignment="Left"
+                                   Foreground="{StaticResource TextPrimaryBrush}"/>
+                    </Grid>
+                    <Grid x:Name="CpuSensorPanel"
+                          Margin="6,0,0,0"
+                          Width="54"
+                          Height="24"
+                          VerticalAlignment="Center">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="10"/>
+                            <RowDefinition Height="14"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock x:Name="CpuTempValue"
+                                   Text="—°C"
+                                   FontFamily="{StaticResource NitroFont}"
+                                   FontSize="9"
+                                   FontWeight="Bold"
+                                   LineStackingStrategy="BlockLineHeight"
+                                   LineHeight="10"
+                                   VerticalAlignment="Top"
+                                   Typography.NumeralAlignment="Tabular"
+                                   TextAlignment="Left"
+                                   Foreground="#FFD6E2E8"/>
+                        <TextBlock x:Name="CpuFreqValue"
+                                   Grid.Row="1"
+                                   Text="— GHz"
+                                   FontFamily="{StaticResource NitroFont}"
+                                   FontSize="11.5"
+                                   FontWeight="SemiBold"
+                                   LineStackingStrategy="BlockLineHeight"
+                                   LineHeight="14"
+                                   VerticalAlignment="Bottom"
+                                   Typography.NumeralAlignment="Tabular"
+                                   TextAlignment="Left"
+                                   Foreground="#FFBFD0D8"/>
+                    </Grid>
+                </StackPanel>
+
+                <Border x:Name="CpuRamDivider"
+                        Width="1"
+                        Height="20"
+                        Margin="9,0,9,0"
+                        VerticalAlignment="Center"
+                        Background="{StaticResource DividerBrush}"/>
+
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <controls:RamSparklineControl x:Name="RamSparkline"
+                                                   Width="42"
+                                                   Height="22"
+                                                   MaxSamples="20"
+                                                   StrokeBrush="{StaticResource RamBlueBrush}"
+                                                   FillBrush="{StaticResource RamFillBrush}"
+                                                   GuideBrush="{StaticResource SparkGuideBrush}"
+                                                   LatestPointBrush="{StaticResource RamLatestBrush}"
+                                                   VerticalAlignment="Center"/>
+                    <Grid x:Name="RamValuePanel"
+                          Margin="7,0,0,0"
+                          Width="32"
+                          Height="24"
+                          VerticalAlignment="Center">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="10"/>
+                            <RowDefinition Height="14"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="RAM"
+                                   FontFamily="{StaticResource NitroFont}"
+                                   FontSize="9"
+                                   FontWeight="Bold"
+                                   LineStackingStrategy="BlockLineHeight"
+                                   LineHeight="10"
+                                   VerticalAlignment="Top"
+                                   TextAlignment="Left"
+                                   Foreground="{StaticResource TextMutedBrush}"/>
+                        <TextBlock x:Name="RamValue"
+                                   Grid.Row="1"
+                                   Text="0%"
                                    FontFamily="{StaticResource NitroFont}"
                                    FontSize="12.5"
                                    FontWeight="Bold"
@@ -208,7 +162,171 @@
                                    Foreground="{StaticResource TextPrimaryBrush}"/>
                     </Grid>
                 </StackPanel>
-            </Border>
-        </StackPanel>
+
+                <Border x:Name="KeepAwakeDivider"
+                        Width="1"
+                        Height="20"
+                        Margin="9,0,9,0"
+                        VerticalAlignment="Center"
+                        Background="{StaticResource DividerBrush}"/>
+
+                <Border x:Name="KeepAwakeBadge"
+                        Height="28"
+                        Padding="7,0"
+                        VerticalAlignment="Center"
+                        CornerRadius="5"
+                        BorderThickness="1">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Viewbox Width="14" Height="14" VerticalAlignment="Center">
+                            <Canvas Width="24" Height="24">
+                                <Path x:Name="KeepAwakeIconPath"
+                                      Data="M 17,8 H 18 A 4,4 0 1 1 18,16 H 17 M 3,8 H 17 V 17 A 4,4 0 0 1 13,21 H 7 A 4,4 0 0 1 3,17 Z M 6,2 V 4 M 10,2 V 4 M 14,2 V 4"
+                                      Stroke="{StaticResource KaffeIdleIconBrush}"
+                                      StrokeThickness="2.2"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round"/>
+                            </Canvas>
+                        </Viewbox>
+                        <Grid x:Name="KeepAwakeText"
+                              Margin="6,0,0,0"
+                              Width="48"
+                              Height="24"
+                              VerticalAlignment="Center">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="10"/>
+                                <RowDefinition Height="14"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock x:Name="KeepAwakeLabel"
+                                       Text="IDLE"
+                                       FontFamily="{StaticResource NitroFont}"
+                                       FontSize="9"
+                                       FontWeight="Bold"
+                                       LineStackingStrategy="BlockLineHeight"
+                                       LineHeight="10"
+                                       VerticalAlignment="Top"
+                                       TextAlignment="Left"
+                                       Foreground="{StaticResource TextMutedBrush}"/>
+                            <TextBlock x:Name="KeepAwakeValue"
+                                       Grid.Row="1"
+                                       Text="Off"
+                                       FontFamily="{StaticResource NitroFont}"
+                                       FontSize="12.5"
+                                       FontWeight="Bold"
+                                       LineStackingStrategy="BlockLineHeight"
+                                       LineHeight="14"
+                                       VerticalAlignment="Bottom"
+                                       Typography.NumeralAlignment="Tabular"
+                                       TextAlignment="Left"
+                                       Foreground="{StaticResource TextPrimaryBrush}"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <StackPanel x:Name="MiniStripPanel"
+                        Orientation="Horizontal"
+                        VerticalAlignment="Center"
+                        Visibility="Collapsed">
+                <Grid Width="16" Height="16" VerticalAlignment="Center">
+                    <Border x:Name="MiniBrandBadge"
+                            Width="16"
+                            Height="16"
+                            CornerRadius="4">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#FFF3A683" Offset="0"/>
+                                <GradientStop Color="#FF6EC6FF" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <TextBlock Text="N"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   FontFamily="{StaticResource NitroFont}"
+                                   FontSize="9.5"
+                                   FontWeight="ExtraBold"
+                                   Foreground="#FF0E1920"/>
+                    </Border>
+                    <Viewbox x:Name="MiniAwakeIcon"
+                             Width="15"
+                             Height="15"
+                             VerticalAlignment="Center"
+                             Visibility="Collapsed">
+                        <Canvas Width="24" Height="24">
+                            <Path Data="M 17,8 H 18 A 4,4 0 1 1 18,16 H 17 M 3,8 H 17 V 17 A 4,4 0 0 1 13,21 H 7 A 4,4 0 0 1 3,17 Z M 6,2 V 4 M 10,2 V 4 M 14,2 V 4"
+                                  Stroke="{StaticResource KaffeAmberBrush}"
+                                  StrokeThickness="2.3"
+                                  StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round"
+                                  StrokeLineJoin="Round"/>
+                        </Canvas>
+                    </Viewbox>
+                </Grid>
+                <Grid Margin="6,0,0,0" Width="38" Height="24" VerticalAlignment="Center">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="12"/>
+                        <RowDefinition Height="12"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock x:Name="MiniCpuValue"
+                               Text="C 0%"
+                               FontFamily="{StaticResource NitroFont}"
+                               FontSize="9.5"
+                               FontWeight="Bold"
+                               LineStackingStrategy="BlockLineHeight"
+                               LineHeight="12"
+                               VerticalAlignment="Center"
+                               Typography.NumeralAlignment="Tabular"
+                               TextAlignment="Left"
+                               Foreground="{StaticResource CpuCoralBrush}"/>
+                    <TextBlock x:Name="MiniRamValue"
+                               Grid.Row="1"
+                               Text="R 0%"
+                               FontFamily="{StaticResource NitroFont}"
+                               FontSize="9.5"
+                               FontWeight="Bold"
+                               LineStackingStrategy="BlockLineHeight"
+                               LineHeight="12"
+                               VerticalAlignment="Center"
+                               Typography.NumeralAlignment="Tabular"
+                               TextAlignment="Left"
+                               Foreground="{StaticResource RamBlueBrush}"/>
+                </Grid>
+            </StackPanel>
+
+            <Grid x:Name="IconOnlyPanel"
+                  Width="34"
+                  Height="34"
+                  VerticalAlignment="Center"
+                  Visibility="Collapsed">
+                <Border Width="20"
+                        Height="20"
+                        CornerRadius="5"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#FFF3A683" Offset="0"/>
+                            <GradientStop Color="#FF6EC6FF" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <TextBlock Text="N"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               FontFamily="{StaticResource NitroFont}"
+                               FontSize="11"
+                               FontWeight="ExtraBold"
+                               Foreground="#FF0E1920"/>
+                </Border>
+                <Ellipse x:Name="IconStatusDot"
+                         Width="8"
+                         Height="8"
+                         Margin="0,0,3,3"
+                         HorizontalAlignment="Right"
+                         VerticalAlignment="Bottom"
+                         Stroke="#FF18242B"
+                         StrokeThickness="1.3"
+                         Visibility="Collapsed"/>
+            </Grid>
+        </Grid>
     </Border>
 </Window>
